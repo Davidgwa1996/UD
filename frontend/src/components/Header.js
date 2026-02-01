@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Menu, X, User, Car, Cpu, Wallet, Search } from 'lucide-react';
 import CartSidebar from './CartSidebar';
-import { useCart } from './contexts/CartContext';
+import { useCart } from '../contexts/CartContext';
 
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
