@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useCart } from '../components/contexts/CartContext';
+import { useCart } from '../contexts/CartContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   CreditCard, Globe, Smartphone, Bitcoin, Building, Send,

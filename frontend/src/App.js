@@ -1,7 +1,7 @@
 // frontend/src/App.js - FINAL VERSION
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { CartProvider } from './components/contexts/CartContext';
+import { CartProvider } from './contexts/CartContext';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import ProductDetailPage from './pages/ProductDetailPage';
