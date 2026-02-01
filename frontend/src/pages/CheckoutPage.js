@@ -1,51 +1,51 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useCart } from '../components/contexts/CartContext';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   CreditCard, Globe, Smartphone, Bitcoin, Building, Send,
   Lock, Shield, Truck, CheckCircle, AlertCircle,
   Zap, Wallet, Banknote, QrCode
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
 
 function CheckoutPage() {
-  const location = useLocation();
   const navigate = useNavigate();
+  const { cartItems, getCartTotal, clearCart } = useCart();
   const [paymentMethod, setPaymentMethod] = useState('card');
-  const [selectedCountry, setSelectedCountry] = useState('GB');
-  const [selectedCurrency, setSelectedCurrency] = useState('GBP');
+  const [selectedCountry, setSelectedCountry] = useState('US');
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Mock order data
-  const order = location.state?.items || [
-    { id: 1, name: 'Tesla Model 3', price: 48999, quantity: 1 },
-    { id: 2, name: 'iPhone 15 Pro', price: 1199, quantity: 1 }
-  ];
+  const [shippingInfo, setShippingInfo] = useState({
+    name: '',
+    address: '',
+    phone: '',
+    email: ''
+  });
 
   // Currency exchange rates
   const exchangeRates = {
-    GBP: 1,
-    USD: 1.27,
-    EUR: 1.17,
-    CAD: 1.71,
-    AUD: 1.92,
-    JPY: 186.5,
-    CNY: 9.12,
-    INR: 105.8,
-    NGN: 1602.3,
-    ZAR: 23.8,
-    BRL: 6.31,
-    MXN: 21.4
+    USD: 1,
+    GBP: 0.79,
+    EUR: 0.92,
+    CAD: 1.36,
+    AUD: 1.51,
+    JPY: 147.5,
+    CNY: 7.18,
+    INR: 83.2,
+    NGN: 1260.5,
+    ZAR: 18.7,
+    BRL: 4.96,
+    MXN: 16.85
   };
 
-  const subtotal = order.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const delivery = 99;
-  const totalGBP = subtotal + delivery;
-  const total = totalGBP * (exchangeRates[selectedCurrency] || 1);
+  const subtotal = getCartTotal();
+  const delivery = cartItems.length > 0 ? 9.99 : 0;
+  const totalUSD = subtotal + delivery;
+  const total = totalUSD * (exchangeRates[selectedCurrency] || 1);
 
   // Countries for selection
   const countries = [
-    { code: 'GB', name: 'United Kingdom', currency: 'GBP' },
     { code: 'US', name: 'United States', currency: 'USD' },
+    { code: 'GB', name: 'United Kingdom', currency: 'GBP' },
     { code: 'CA', name: 'Canada', currency: 'CAD' },
     { code: 'AU', name: 'Australia', currency: 'AUD' },
     { code: 'EU', name: 'European Union', currency: 'EUR' },
@@ -104,15 +104,28 @@ function CheckoutPage() {
     }
   ];
 
-  const handlePayment = async () => {
+  const handleShippingChange = (e) => {
+    const { name, value } = e.target;
+    setShippingInfo(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCompleteOrder = async () => {
     setIsProcessing(true);
     
     // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
     setIsProcessing(false);
-    toast.success('Payment processed successfully!');
-    navigate('/order-success');
+    
+    // Show success message
+    alert('Order placed successfully! No verification required.');
+    
+    // Clear cart and redirect
+    clearCart();
+    navigate('/?order=success');
   };
 
   const formatCurrency = (amount, currency) => {
@@ -123,71 +136,139 @@ function CheckoutPage() {
     }).format(amount);
   };
 
+  if (cartItems.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Your cart is empty</h1>
+            <p className="text-gray-600 mb-8">Add some products to your cart before checkout</p>
+            <Link 
+              to="/" 
+              className="inline-block bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition"
+            >
+              Continue Shopping
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
-          {/* Global Header */}
-          <div className="mb-8 p-6 bg-gradient-to-r from-primary to-blue-800 text-white rounded-2xl">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold mb-2">Universal Checkout</h1>
-                <p className="opacity-90">Pay from anywhere with any payment method</p>
-              </div>
-              <div className="flex space-x-4 mt-4 md:mt-0">
-                <select
-                  value={selectedCountry}
-                  onChange={(e) => {
-                    setSelectedCountry(e.target.value);
-                    const country = countries.find(c => c.code === e.target.value);
-                    if (country) setSelectedCurrency(country.currency);
-                  }}
-                  className="bg-white/20 text-white border border-white/30 rounded-lg px-4 py-2"
-                >
-                  <option value="">Select Country</option>
-                  {countries.map(country => (
-                    <option key={country.code} value={country.code}>
-                      {country.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedCurrency}
-                  onChange={(e) => setSelectedCurrency(e.target.value)}
-                  className="bg-white/20 text-white border border-white/30 rounded-lg px-4 py-2"
-                >
-                  {Object.keys(exchangeRates).map(currency => (
-                    <option key={currency} value={currency}>{currency}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+          {/* Header with Back Button */}
+          <div className="mb-8">
+            <Link 
+              to="/payment-methods" 
+              className="inline-flex items-center text-primary hover:text-blue-700 mb-4"
+            >
+              ← Choose Payment Method
+            </Link>
+            <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            {/* Left Column - Payment Methods */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Select Payment Method</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Shipping & Payment */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Shipping Information */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Shipping Information (Optional)</h3>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Full Name"
+                    value={shippingInfo.name}
+                    onChange={handleShippingChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    name="address"
+                    placeholder="Address"
+                    value={shippingInfo.address}
+                    onChange={handleShippingChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  />
+                  <input
+                    type="text"
+                    name="phone"
+                    placeholder="Phone (Optional)"
+                    value={shippingInfo.phone}
+                    onChange={handleShippingChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email (Optional)"
+                    value={shippingInfo.email}
+                    onChange={handleShippingChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              {/* Currency Selection */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Currency & Location</h3>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="block text-gray-700 mb-2">Country</label>
+                    <select
+                      value={selectedCountry}
+                      onChange={(e) => {
+                        setSelectedCountry(e.target.value);
+                        const country = countries.find(c => c.code === e.target.value);
+                        if (country) setSelectedCurrency(country.currency);
+                      }}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                    >
+                      {countries.map(country => (
+                        <option key={country.code} value={country.code}>
+                          {country.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-gray-700 mb-2">Currency</label>
+                    <select
+                      value={selectedCurrency}
+                      onChange={(e) => setSelectedCurrency(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                    >
+                      {Object.keys(exchangeRates).map(currency => (
+                        <option key={currency} value={currency}>{currency}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Methods */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Select Payment Method</h3>
                 
-                {/* Universal Payment Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
                   {paymentMethods.map(method => (
                     <button
                       key={method.id}
                       onClick={() => setPaymentMethod(method.id)}
-                      className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center h-40 ${
+                      className={`p-3 rounded-lg border flex flex-col items-center justify-center h-32 ${
                         paymentMethod === method.id
                           ? 'border-primary bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <div className="mb-3">{method.icon}</div>
-                      <div className="font-medium text-center text-sm mb-1">{method.name}</div>
-                      <div className="text-xs text-gray-600 text-center">{method.desc}</div>
+                      <div className="mb-2 text-primary">{method.icon}</div>
+                      <div className="font-medium text-sm text-center">{method.name}</div>
                       {method.global && (
-                        <div className="mt-2 flex items-center text-xs text-green-600">
-                          <Globe size={12} className="mr-1" />
+                        <div className="mt-1 text-xs text-green-600 flex items-center">
+                          <Globe size={10} className="mr-1" />
                           Global
                         </div>
                       )}
@@ -195,159 +276,88 @@ function CheckoutPage() {
                   ))}
                 </div>
 
-                {/* Payment Method Forms */}
+                {/* Selected Payment Form */}
                 {paymentMethod === 'card' && (
-                  <div className="space-y-6">
-                    <div className="p-4 bg-blue-50 rounded-lg mb-4">
-                      <div className="font-medium text-blue-900 mb-2">💳 Accepting All Cards Worldwide</div>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
                       <p className="text-sm text-blue-800">
-                        We accept Visa, MasterCard, American Express, UnionPay, Discover, JCB,
-                        and all regional card networks from any country.
+                        💳 We accept all major credit and debit cards worldwide. No verification required.
                       </p>
                     </div>
-                    
-                    <div>
-                      <label className="block text-gray-700 mb-2">Card Number</label>
-                      <input
-                        type="text"
-                        placeholder="1234 5678 9012 3456"
-                        className="w-full p-4 border border-gray-300 rounded-xl"
-                      />
-                    </div>
-                    
+                    <input
+                      type="text"
+                      placeholder="Card Number"
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                    />
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-gray-700 mb-2">Expiry Date</label>
-                        <input
-                          type="text"
-                          placeholder="MM/YY"
-                          className="w-full p-4 border border-gray-300 rounded-xl"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-700 mb-2">CVV</label>
-                        <input
-                          type="text"
-                          placeholder="123"
-                          className="w-full p-4 border border-gray-300 rounded-xl"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-gray-700 mb-2">Cardholder Name</label>
                       <input
                         type="text"
-                        placeholder="John Doe"
-                        className="w-full p-4 border border-gray-300 rounded-xl"
+                        placeholder="MM/YY"
+                        className="p-3 border border-gray-300 rounded-lg"
                       />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-gray-700 mb-2">Card Issuer Country</label>
-                      <select className="w-full p-4 border border-gray-300 rounded-xl">
-                        <option value="">Any Country</option>
-                        {countries.map(country => (
-                          <option key={country.code} value={country.code}>{country.name}</option>
-                        ))}
-                      </select>
+                      <input
+                        type="text"
+                        placeholder="CVV"
+                        className="p-3 border border-gray-300 rounded-lg"
+                      />
                     </div>
                   </div>
                 )}
 
                 {paymentMethod === 'bank' && (
-                  <div>
-                    <div className="p-4 bg-green-50 rounded-lg mb-6">
-                      <div className="font-medium text-green-900 mb-2">🏦 Any Bank Worldwide Accepted</div>
-                      <p className="text-sm text-green-800">
-                        Transfer from any bank in any country. We accept SWIFT, SEPA, ACH, Faster Payments,
-                        and all local banking networks.
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-gray-700 mb-2">Your Bank Name (Any Bank)</label>
-                        <input
-                          type="text"
-                          placeholder="Enter your bank name"
-                          className="w-full p-4 border border-gray-300 rounded-xl"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-gray-700 mb-2">Bank Account Number</label>
-                        <input
-                          type="text"
-                          placeholder="Your account number"
-                          className="w-full p-4 border border-gray-300 rounded-xl"
-                        />
-                      </div>
-                      
-                      <div className="bg-gray-50 p-4 rounded-xl">
-                        <div className="font-medium text-gray-900 mb-2">Our Bank Details</div>
-                        <div className="space-y-2 text-sm">
-                          <div><span className="font-medium">Bank:</span> Global Payment Network</div>
-                          <div><span className="font-medium">Account:</span> 1234567890</div>
-                          <div><span className="font-medium">SWIFT/BIC:</span> UNIDGB2L</div>
-                          <div><span className="font-medium">Reference:</span> UD-{Date.now()}</div>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      🏦 Bank transfers accepted from any country. No verification required for transfers under $10,000.
+                    </p>
                   </div>
                 )}
 
-                {/* Other payment methods... */}
-              </div>
-
-              {/* Security Badges */}
-              <div className="mt-8 p-6 bg-gray-50 rounded-xl">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                  <div className="flex items-center">
-                    <Lock size={20} className="text-green-600 mr-3" />
-                    <span className="font-medium">256-bit SSL Encryption</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Shield size={20} className="text-blue-600 mr-3" />
-                    <span className="font-medium">PCI DSS Compliant</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Globe size={20} className="text-purple-600 mr-3" />
-                    <span className="font-medium">Global Compliance</span>
+                {/* Security Badges */}
+                <div className="mt-6 pt-6 border-t">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center text-sm">
+                      <Lock size={16} className="text-green-600 mr-2" />
+                      <span>No OTP/Phone Verification</span>
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <Shield size={16} className="text-blue-600 mr-2" />
+                      <span>Instant Processing</span>
+                    </div>
+                    <div className="flex items-center text-sm">
+                      <Zap size={16} className="text-yellow-600 mr-2" />
+                      <span>Order Confirmed Immediately</span>
+                    </div>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600">
-                  Your payment is secure and encrypted. We comply with international payment regulations
-                  including GDPR, PSD2, and local financial regulations worldwide.
-                </p>
               </div>
             </div>
 
             {/* Right Column - Order Summary */}
-            <div>
-              <div className="bg-white rounded-2xl shadow-lg p-8 sticky top-24">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Order Summary</h3>
+            <div className="space-y-8">
+              {/* Order Summary */}
+              <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Order Summary</h3>
                 
                 {/* Currency Display */}
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                   <div className="flex justify-between items-center">
                     <div>
-                      <div className="font-medium">Paying in</div>
-                      <div className="text-2xl font-bold">{selectedCurrency}</div>
+                      <div className="text-sm text-gray-600">Paying in</div>
+                      <div className="text-lg font-bold">{selectedCurrency}</div>
                     </div>
-                    <Globe size={24} className="text-primary" />
+                    <Globe size={20} className="text-primary" />
                   </div>
                 </div>
 
                 {/* Items */}
-                <div className="space-y-4 mb-6">
-                  {order.map(item => (
-                    <div key={item.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <div>
-                        <div className="font-medium">{item.name}</div>
-                        <div className="text-sm text-gray-600">Qty: {item.quantity}</div>
+                <div className="space-y-3 mb-4">
+                  {cartItems.map(item => (
+                    <div key={item.id} className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{item.name}</div>
+                        <div className="text-xs text-gray-600">Qty: {item.quantity}</div>
                       </div>
-                      <div className="font-bold">
+                      <div className="font-medium">
                         {formatCurrency(item.price * item.quantity * (exchangeRates[selectedCurrency] || 1), selectedCurrency)}
                       </div>
                     </div>
@@ -355,27 +365,27 @@ function CheckoutPage() {
                 </div>
 
                 {/* Totals */}
-                <div className="space-y-4 mb-8">
-                  <div className="flex justify-between">
+                <div className="space-y-2 mb-6">
+                  <div className="flex justify-between text-sm">
                     <span>Subtotal</span>
                     <span>{formatCurrency(subtotal * (exchangeRates[selectedCurrency] || 1), selectedCurrency)}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span>Delivery</span>
                     <span>{formatCurrency(delivery * (exchangeRates[selectedCurrency] || 1), selectedCurrency)}</span>
                   </div>
-                  <div className="border-t pt-4 flex justify-between text-xl font-bold">
+                  <div className="border-t pt-2 flex justify-between font-bold text-lg">
                     <span>Total</span>
                     <span>{formatCurrency(total, selectedCurrency)}</span>
                   </div>
                 </div>
 
-                {/* Action Button */}
+                {/* Complete Order Button */}
                 <button
-                  onClick={handlePayment}
+                  onClick={handleCompleteOrder}
                   disabled={isProcessing}
-                  className={`w-full bg-gradient-to-r from-primary to-blue-700 text-white py-4 rounded-xl font-bold text-lg mb-4 flex items-center justify-center ${
-                    isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:from-blue-800 hover:to-primary'
+                  className={`w-full bg-gradient-to-r from-primary to-blue-600 text-white py-3 rounded-lg font-bold mb-4 flex items-center justify-center ${
+                    isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:from-blue-700 hover:to-primary'
                   }`}
                 >
                   {isProcessing ? (
@@ -385,44 +395,40 @@ function CheckoutPage() {
                     </>
                   ) : (
                     <>
-                      <Lock size={20} className="mr-2" />
-                      Pay Securely {formatCurrency(total, selectedCurrency)}
+                      <CheckCircle size={20} className="mr-2" />
+                      Complete Order (No Verification)
                     </>
                   )}
                 </button>
 
-                {/* Guarantees */}
-                <div className="space-y-3 text-sm text-gray-600">
+                {/* Security Notes */}
+                <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex items-center">
-                    <CheckCircle size={16} className="text-green-500 mr-2" />
-                    <span>Money-back guarantee worldwide</span>
+                    <CheckCircle size={14} className="text-green-500 mr-2" />
+                    <span>Payment processed instantly</span>
                   </div>
                   <div className="flex items-center">
-                    <Shield size={16} className="text-blue-500 mr-2" />
-                    <span>Buyer protection included</span>
+                    <CheckCircle size={14} className="text-green-500 mr-2" />
+                    <span>No OTP/phone verification</span>
                   </div>
                   <div className="flex items-center">
-                    <Zap size={16} className="text-yellow-500 mr-2" />
-                    <span>Instant payment confirmation</span>
+                    <CheckCircle size={14} className="text-green-500 mr-2" />
+                    <span>Order confirmed immediately</span>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Payment Method Logos */}
-          <div className="mt-12 p-6 bg-white rounded-2xl">
-            <div className="text-center mb-6">
-              <div className="font-bold text-gray-900 mb-2">Supported Worldwide</div>
-              <p className="text-gray-600">We work with payment providers across the globe</p>
-            </div>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-4 text-center">
-              {['Visa', 'MasterCard', 'PayPal', 'Bitcoin', 'Western Union', 'Mobile Money'].map(provider => (
-                <div key={provider} className="p-4 border rounded-lg">
-                  <div className="font-medium text-gray-700">{provider}</div>
-                  <div className="text-xs text-gray-500 mt-1">Global</div>
+              {/* Supported Methods */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h4 className="font-bold text-gray-900 mb-3">Supported Worldwide</h4>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  {['Visa', 'MasterCard', 'PayPal', 'Bitcoin', 'Bank Transfer', 'Apple Pay'].map(provider => (
+                    <div key={provider} className="p-2 border rounded text-xs">
+                      {provider}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </div>
