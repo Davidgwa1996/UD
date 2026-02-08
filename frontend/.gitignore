@@ -1,0 +1,88 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Testing
+coverage/
+
+# Production build
+build/
+dist/
+out/
+
+# Development cache
+.cache/
+*.cache
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Package managers
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Temp files
+*.tmp
+*.temp
+
+# Large files warning
+*.pack
+
+# Next.js specific
+.next/
+
+# Nuxt.js specific
+.nuxt/
+
+# Gatsby specific
+.cache/
+public
+
+# Vue.js specific
+dist/
+
+# React specific
+*.log
+
+# System files
+desktop.ini
+
+# Custom - add your project specific ignores below
+# node_modules/.cache/ (explicitly mentioned for your case)
+frontend/node_modules/.cache/
+node_modules/.cache/
