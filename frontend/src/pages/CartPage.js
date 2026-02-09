@@ -2,26 +2,33 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Shield, Truck, CreditCard, Lock, Globe, X } from 'lucide-react';
-import './CartPage.css'; // We'll create this CSS file
+import './CartPage.css';
 
 function CartPage() {
   const navigate = useNavigate();
   const { 
-    cart, 
+    items,  // Changed from 'cart' to 'items'
+    cartTotal, 
+    cartCount,  // Changed from 'getCartCount()' to 'cartCount'
     removeFromCart, 
     updateQuantity, 
-    clearCart, 
-    cartTotal, 
-    getCartCount,
-    taxAmount = cartTotal * 0.08, // Default tax if not provided
-    shippingAmount = cartTotal > 1000 ? 0 : 49.99, // Default shipping
-    grandTotal = cartTotal + (cartTotal * 0.08) + (cartTotal > 1000 ? 0 : 49.99),
-    isCartEmpty
+    clearCart,
+    currency
   } = useCart();
 
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Calculate derived values
+  const shippingAmount = cartTotal > 1000 ? 0 : 49.99;
+  const taxAmount = cartTotal * 0.08;
+  const grandTotal = cartTotal + taxAmount + shippingAmount;
+  const isCartEmpty = items.length === 0;
+
+  const getCurrencySymbol = () => {
+    return currency === 'GBP' ? '£' : currency === 'EUR' ? '€' : '$';
+  };
 
   const handleQuantityChange = (productId, newQuantity) => {
     if (newQuantity >= 1) {
@@ -47,7 +54,6 @@ function CartPage() {
       return;
     }
     
-    // Process payment and navigate to success page
     alert(`Payment with ${selectedPayment.toUpperCase()} confirmed! Thank you for your purchase.`);
     clearCart();
     navigate('/checkout-success');
@@ -102,7 +108,6 @@ function CartPage() {
       <div className="cart-page">
         <MobileMenu />
         
-        {/* Mobile Menu Button */}
         <button 
           className="mobile-menu-toggle"
           onClick={() => setIsMobileMenuOpen(true)}
@@ -141,7 +146,6 @@ function CartPage() {
     <div className="cart-page">
       <MobileMenu />
       
-      {/* Mobile Menu Button */}
       <button 
         className="mobile-menu-toggle"
         onClick={() => setIsMobileMenuOpen(true)}
@@ -149,7 +153,6 @@ function CartPage() {
         ☰ Menu
       </button>
 
-      {/* Header */}
       <header className="cart-header">
         <div className="container">
           <div className="header-content">
@@ -162,8 +165,8 @@ function CartPage() {
               onClick={() => navigate('/cart')}
             >
               🛒
-              {getCartCount() > 0 && (
-                <span className="cart-count">{getCartCount()}</span>
+              {cartCount > 0 && (
+                <span className="cart-count">{cartCount}</span>
               )}
             </button>
           </div>
@@ -176,7 +179,7 @@ function CartPage() {
             <div className="cart-header-section">
               <h1 className="cart-title">Shopping Cart</h1>
               <div className="cart-info">
-                <span className="cart-count-badge">{getCartCount()} items</span>
+                <span className="cart-count-badge">{cartCount} items</span>
                 <button 
                   onClick={clearCart}
                   className="clear-cart-btn"
@@ -188,10 +191,9 @@ function CartPage() {
             </div>
 
             <div className="cart-layout">
-              {/* Cart Items - Left Column */}
               <div className="cart-items-section">
                 <div className="cart-items-container">
-                  {cart.map((item) => (
+                  {items.map((item) => (
                     <div key={item.id} className="cart-item">
                       <div className="cart-item-image">
                         {item.image ? (
@@ -217,13 +219,16 @@ function CartPage() {
                           <span className="cart-item-market">{item.market || 'Global'}</span>
                         </div>
                         
-                        <div className="cart-item-price">${item.price.toLocaleString()}</div>
+                        <div className="cart-item-price">
+                          {getCurrencySymbol()}{item.price.toLocaleString()}
+                        </div>
                         
                         <div className="cart-item-controls">
                           <div className="quantity-control">
                             <button 
                               onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
                               className="quantity-btn"
+                              disabled={item.quantity <= 1}
                             >
                               <Minus className="h-3 w-3" />
                             </button>
@@ -236,7 +241,7 @@ function CartPage() {
                             </button>
                           </div>
                           <div className="cart-item-total">
-                            ${(item.price * item.quantity).toLocaleString()}
+                            {getCurrencySymbol()}{(item.price * item.quantity).toLocaleString()}
                           </div>
                         </div>
                       </div>
@@ -255,7 +260,6 @@ function CartPage() {
                 </div>
               </div>
 
-              {/* Order Summary - Right Column */}
               <div className="order-summary-section">
                 <div className="order-summary-card">
                   <h2 className="order-summary-title">Order Summary</h2>
@@ -263,20 +267,22 @@ function CartPage() {
                   <div className="order-breakdown">
                     <div className="breakdown-row">
                       <span>Subtotal</span>
-                      <span>${cartTotal.toLocaleString()}</span>
+                      <span>{getCurrencySymbol()}{cartTotal.toLocaleString()}</span>
                     </div>
                     <div className="breakdown-row">
                       <span>Shipping</span>
-                      <span>{shippingAmount === 0 ? 'FREE' : `$${shippingAmount.toFixed(2)}`}</span>
+                      <span>{shippingAmount === 0 ? 'FREE' : `${getCurrencySymbol()}${shippingAmount.toFixed(2)}`}</span>
                     </div>
                     <div className="breakdown-row">
                       <span>Tax (8%)</span>
-                      <span>${taxAmount.toFixed(2)}</span>
+                      <span>{getCurrencySymbol()}{taxAmount.toFixed(2)}</span>
                     </div>
                     
                     <div className="breakdown-total">
                       <span>Total</span>
-                      <span className="total-amount">${grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                      <span className="total-amount">
+                        {getCurrencySymbol()}{grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      </span>
                     </div>
                   </div>
 

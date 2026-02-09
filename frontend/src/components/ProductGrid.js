@@ -40,6 +40,25 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
     return null;
   };
 
+  const handleAddToCart = (product) => {
+    console.log('Adding product to cart:', product);
+    
+    // Ensure product has required properties
+    const cartProduct = {
+      id: product.id || product._id || Math.random().toString(36).substr(2, 9),
+      name: product.name || 'Unnamed Product',
+      price: product.price || 0,
+      image: product.image || product.imageUrl || '/api/placeholder/300/300',
+      category: product.category || 'Uncategorized',
+      quantity: 1
+    };
+    
+    addToCart(cartProduct);
+    
+    // Optional: Show a confirmation
+    alert(`${product.name || 'Product'} added to cart!`);
+  };
+
   return (
     <div className="product-grid" style={gridStyle}>
       {products.map((product) => {
@@ -123,7 +142,7 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
               <div className="product-actions">
                 <button 
                   className="buy-now-btn"
-                  onClick={() => addToCart(product)}
+                  onClick={() => handleAddToCart(product)}
                   disabled={!product.stock || product.stock === 0}
                 >
                   🛒 Add to Cart

@@ -32,7 +32,7 @@ const cartReducer = (state, action) => {
         ...state,
         items: state.items.map(item =>
           item.id === action.payload.id
-            ? { ...item, quantity: action.payload.quantity }
+            ? { ...item, quantity: Math.max(1, action.payload.quantity) } // Ensure at least 1
             : item
         )
       };
@@ -47,6 +47,12 @@ const cartReducer = (state, action) => {
       return {
         ...state,
         currency: action.payload
+      };
+
+    case 'LOAD_CART':
+      return {
+        ...state,
+        items: action.payload
       };
 
     default:
@@ -65,6 +71,7 @@ export const CartProvider = ({ children }) => {
   const cartCount = state.items.reduce((count, item) => count + item.quantity, 0);
 
   const addToCart = (product, quantity = 1) => {
+    console.log('Adding to cart:', product.name, 'Quantity:', quantity);
     dispatch({
       type: 'ADD_TO_CART',
       payload: { ...product, quantity }
@@ -79,6 +86,10 @@ export const CartProvider = ({ children }) => {
   };
 
   const updateQuantity = (productId, quantity) => {
+    if (quantity < 1) {
+      removeFromCart(productId);
+      return;
+    }
     dispatch({
       type: 'UPDATE_QUANTITY',
       payload: { id: productId, quantity }
@@ -93,22 +104,36 @@ export const CartProvider = ({ children }) => {
     dispatch({ type: 'SET_CURRENCY', payload: currency });
   };
 
-  // Save cart to localStorage
+  // Save cart to localStorage whenever items change
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(state.items));
-  }, [state.items]);
+    console.log('Saving cart to localStorage:', state.items);
+    localStorage.setItem('unidigital_cart', JSON.stringify(state.items));
+    localStorage.setItem('unidigital_currency', state.currency);
+  }, [state.items, state.currency]);
 
-  // Load cart from localStorage
+  // Load cart from localStorage on initial load
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
+    const savedCart = localStorage.getItem('unidigital_cart');
+    const savedCurrency = localStorage.getItem('unidigital_currency');
+    
+    console.log('Loading from localStorage - Cart:', savedCart, 'Currency:', savedCurrency);
+    
     if (savedCart) {
-      const parsedCart = JSON.parse(savedCart);
-      parsedCart.forEach(item => {
+      try {
+        const parsedCart = JSON.parse(savedCart);
+        console.log('Parsed cart:', parsedCart);
         dispatch({
-          type: 'ADD_TO_CART',
-          payload: item
+          type: 'LOAD_CART',
+          payload: parsedCart
         });
-      });
+      } catch (error) {
+        console.error('Error parsing saved cart:', error);
+        localStorage.removeItem('unidigital_cart');
+      }
+    }
+    
+    if (savedCurrency) {
+      dispatch({ type: 'SET_CURRENCY', payload: savedCurrency });
     }
   }, []);
 
