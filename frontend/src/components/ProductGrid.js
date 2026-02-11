@@ -1,12 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import AIPriceBadge from './AIPriceBadge';
 import './ProductGrid.css';
 
 const ProductGrid = ({ products = [], columns = 4 }) => {
   const { addToCart } = useCart();
 
-  // If products is null/undefined or empty, show message
+  // ---------- Helper: truncate long strings ----------
+  const truncateString = (str, maxLength = 22) => {
+    if (!str) return str;
+    return str.length > maxLength ? str.substring(0, maxLength) + '…' : str;
+  };
+
+  // ---------- No products fallback ----------
   if (!products || !Array.isArray(products) || products.length === 0) {
     return (
       <div className="no-products">
@@ -17,22 +24,37 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
     );
   }
 
+  // ---------- Grid columns ----------
   const gridStyle = {
     gridTemplateColumns: `repeat(${columns}, 1fr)`
   };
 
+  // ---------- Price formatting ----------
   const formatPrice = (price, currency = 'GBP') => {
     if (!price && price !== 0) return '£0.00';
     return new Intl.NumberFormat('en-GB', {
       style: 'currency',
       currency: currency,
-      minimumFractionDigits: 2
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(price);
   };
 
+  // ---------- AI price change formatting ----------
+  const formatPriceChange = (change) => {
+    if (change === undefined || change === null) return null;
+    const isPositive = change > 0;
+    return {
+      symbol: isPositive ? '+' : '',
+      value: change,
+      formatted: `${isPositive ? '+' : ''}${change}%`,
+      class: isPositive ? 'up' : 'down'
+    };
+  };
+
+  // ---------- Non‑AI product badges (NEW, REFURBISHED, etc.) ----------
   const getProductBadge = (product) => {
     if (!product) return null;
-    
     if (product.isNew) return { label: 'NEW', class: 'badge-new' };
     if (product.isRefurbished) return { label: 'REFURBISHED', class: 'badge-refurbished' };
     if (product.isAiPriced) return { label: 'AI-PRICED', class: 'badge-ai' };
@@ -40,10 +62,10 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
     return null;
   };
 
+  // ---------- Add to cart ----------
   const handleAddToCart = (product) => {
     console.log('Adding product to cart:', product);
     
-    // Ensure product has required properties
     const cartProduct = {
       id: product.id || product._id || Math.random().toString(36).substr(2, 9),
       name: product.name || 'Unnamed Product',
@@ -54,9 +76,7 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
     };
     
     addToCart(cartProduct);
-    
-    // Optional: Show a confirmation
-    alert(`${product.name || 'Product'} added to cart!`);
+    console.log(`${product.name || 'Product'} added to cart!`);
   };
 
   return (
@@ -65,21 +85,52 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
         if (!product) return null;
         
         const badge = getProductBadge(product);
+        const priceChange = formatPriceChange(product.aiChange);
         
+        // ---------- Only render AI badge if we have valid AI data ----------
+        const shouldShowAIBadge = product.isAiPriced && product.aiChange !== undefined && product.aiChange !== null;
+        
+        // ---------- Safe values with fallbacks ----------
+        const safeProduct = {
+          name: product.name || 'Unnamed Product',
+          category: product.category || 'Uncategorized',
+          rating: product.rating || 4.5,
+          reviews: product.reviews || 128,
+          description: product.description || 'No description available',
+          stock: product.stock ?? 29,
+          price: product.price ?? 0,
+          currency: product.currency || 'GBP',
+          originalPrice: product.originalPrice,
+          image: product.image || product.imageUrl || '/api/placeholder/300/300',
+          aiLocation: truncateString(product.aiLocation || 'Liverpool', 22),
+          aiUpdated: product.aiUpdated || '3m ago',
+          aiChange: product.aiChange ?? -23.1
+        };
+
         return (
           <div key={product.id || product._id || Math.random()} className="product-card">
-            {/* Product Image */}
+            {/* ===== AI PRICE BADGE ===== */}
+            {shouldShowAIBadge && (
+              <AIPriceBadge 
+                changePercent={safeProduct.aiChange}
+                location={safeProduct.aiLocation}
+                updatedAt={safeProduct.aiUpdated}
+                trend={priceChange?.class || (safeProduct.aiChange > 0 ? 'up' : 'down')}
+              />
+            )}
+            
+            {/* ===== PRODUCT IMAGE ===== */}
             <Link to={`/product/${product.id || product._id || '1'}`} className="product-image-link">
               <div className="product-image">
                 <img 
-                  src={product.image || product.imageUrl || '/api/placeholder/300/300'} 
-                  alt={product.name || 'Product'} 
+                  src={safeProduct.image} 
+                  alt={safeProduct.name} 
                   onError={(e) => {
                     e.target.src = '/api/placeholder/300/300';
                     e.target.onerror = null;
                   }}
                 />
-                {badge && (
+                {badge && !shouldShowAIBadge && (
                   <div className={`product-badge ${badge.class}`}>
                     {badge.label}
                   </div>
@@ -87,83 +138,76 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
               </div>
             </Link>
 
-            {/* Product Info */}
+            {/* ===== PRODUCT INFO ===== */}
             <div className="product-info">
-              <Link to={`/product/${product.id || product._id || '1'}`} className="product-name">
-                {product.name || 'Unnamed Product'}
+              <Link 
+                to={`/product/${product.id || product._id || '1'}`} 
+                className="product-name"
+                title={safeProduct.name}
+              >
+                {safeProduct.name}
               </Link>
               
               <div className="product-category">
-                {product.category || 'Uncategorized'}
+                {safeProduct.category}
               </div>
               
               <div className="product-rating">
-                {'★'.repeat(Math.floor(product.rating || 0))}
-                {'☆'.repeat(5 - Math.floor(product.rating || 0))}
-                <span className="rating-value">({(product.rating || 0).toFixed(1)}/5)</span>
+                <span className="stars">⭐️⭐️⭐️⭐️⭐️</span>
+                <span className="rating-value">{safeProduct.rating.toFixed(1)}/5</span>
+                <span className="review-count">({safeProduct.reviews})</span>
               </div>
 
-              <div className="product-description">
-                {product.description || 'No description available'}
+              <div className="product-description" title={safeProduct.description}>
+                {safeProduct.description}
               </div>
 
-              {/* Price Section */}
-              <div className="product-price-section">
-                <div className="price-main">
-                  <span className="current-price">
-                    {formatPrice(product.price || 0, product.currency)}
-                  </span>
-                  {product.originalPrice && product.originalPrice > product.price && (
-                    <span className="original-price">
-                      {formatPrice(product.originalPrice, product.currency)}
-                    </span>
-                  )}
-                </div>
-                
-                {product.aiPricing && (
-                  <div className="ai-pricing">
-                    <span className="ai-icon">🤖</span>
-                    AI-calculated based on market demand
-                  </div>
+              {/* ===== STOCK INFO ===== */}
+              <div className="stock-info">
+                <span className="stock-label">Market stock:</span>
+                <span className="stock-value">{safeProduct.stock}</span>
+                {shouldShowAIBadge && (
+                  <span className="ai-updated-badge">AI updated</span>
                 )}
               </div>
 
-              {/* Stock & Location */}
-              <div className="product-meta">
-                <span className="stock-status">
-                  {(product.stock || 0) > 0 ? `In Stock: ${product.stock}` : 'Out of Stock'}
-                </span>
-                <span className="location">
-                  📍 {product.location || 'UK Stock'}
-                </span>
+              {/* ===== PRICE SECTION ===== */}
+              <div className="product-price-section">
+                <div className="price-main">
+                  <span className="current-price">
+                    {formatPrice(safeProduct.price, safeProduct.currency)}
+                  </span>
+                  {safeProduct.originalPrice && safeProduct.originalPrice > safeProduct.price && (
+                    <span className="original-price">
+                      {formatPrice(safeProduct.originalPrice, safeProduct.currency)}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* ===== ACTION BUTTONS – UPDATED ===== */}
               <div className="product-actions">
                 <button 
-                  className="buy-now-btn"
+                  className="btn btn-primary ai-best-price"
                   onClick={() => handleAddToCart(product)}
                   disabled={!product.stock || product.stock === 0}
                 >
-                  🛒 Add to Cart
+                  Buy Now - AI Best Price
                 </button>
                 
-                <Link to={`/product/${product.id || product._id || '1'}`} className="view-details-btn">
-                  View Details →
-                </Link>
-              </div>
-
-              {/* AI Features (if applicable) */}
-              {(product.aiFeatures || product.isAiPriced) && (
-                <div className="ai-features">
-                  <button className="ai-analysis-btn">
-                    📊 View Market Analysis
-                  </button>
-                  <button className="price-alert-btn">
-                    🔔 Price Alert
+                <div className="secondary-actions">
+                  <Link to={`/market-analysis/${product.id}`} className="btn btn-outline">
+                    View Market Analysis
+                  </Link>
+                  <button 
+                    className="btn btn-outline"
+                    onClick={() => handleAddToCart(product)}
+                    disabled={!product.stock || product.stock === 0}
+                  >
+                    🛒 Add to Cart
                   </button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         );

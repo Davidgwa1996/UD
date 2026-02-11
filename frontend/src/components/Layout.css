@@ -1,33 +1,75 @@
-/* Layout.css */
+/* Layout.css - UPDATED to remove unused space */
+
+/* CSS Variables for consistent spacing */
+:root {
+  --header-height: 80px;
+  --footer-height: 400px;
+  --mobile-header-height: 70px;
+  --mobile-footer-height: 300px;
+  --container-padding: 20px;
+  --mobile-padding: 15px;
+  --mobile-breakpoint: 768px;
+  --tablet-breakpoint: 1024px;
+}
+
 .layout {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   width: 100%;
+  position: relative;
+  overflow-x: hidden;
 }
 
 /* Sticky header effect */
 .layout.scrolled .sticky-header {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   backdrop-filter: blur(10px);
   background: rgba(15, 15, 30, 0.95);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  transform: translateZ(0);
 }
 
 .main-content {
-  flex: 1;
+  flex: 1 0 auto;
   width: 100%;
-  min-height: calc(100vh - 140px); /* Adjust based on header/footer height */
+  min-height: calc(100vh - var(--header-height) - var(--footer-height));
+  position: relative;
+  z-index: 1;
+  padding-top: 0; /* REMOVED fixed padding-top */
+  transition: padding-top 0.3s ease;
+}
+
+/* Home page specific - NO extra padding */
+.main-content.home-page {
+  padding-top: 0 !important;
+}
+
+/* When layout is scrolled, only non-home pages get padding */
+.layout.scrolled .main-content:not(.home-page) {
+  padding-top: 60px;
 }
 
 .container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 var(--container-padding);
   width: 100%;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Home page container has minimal top padding */
+.home-page .container {
+  padding-top: 10px !important;
+}
+
+/* Regular pages keep their top padding */
+.container:not(.home-page) {
+  padding-top: 20px;
 }
 
 /* Mobile Menu Overlay */
@@ -39,7 +81,7 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(5px);
-  z-index: 999;
+  z-index: 9998;
   animation: fadeIn 0.3s ease;
 }
 
@@ -48,24 +90,197 @@
   to { opacity: 1; }
 }
 
+/* Content spacing helpers */
+.content-section {
+  margin-bottom: 40px;
+  position: relative;
+  z-index: 1;
+}
+
+.content-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Grid layout for multi-column content */
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+/* Flex layout alternative */
+.content-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+.content-flex > * {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+/* Fix for overlapping due to position: absolute */
+.absolute-fix {
+  position: relative;
+  z-index: 10;
+}
+
+/* Clearfix for floated elements */
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Home page hero section spacing */
+.hero-section {
+  margin: 0 0 40px 0;
+  padding: 30px 0 40px 0;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%);
+  border-radius: 0 0 20px 20px;
+  text-align: center;
+}
+
+.hero-section h1 {
+  font-size: 2.8rem;
+  margin-bottom: 15px;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-section .subtitle {
+  font-size: 1.2rem;
+  color: #94a3b8;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .container {
-    padding: 0 15px;
+    max-width: 100%;
+  }
+  
+  .content-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+  }
+  
+  .hero-section h1 {
+    font-size: 2.3rem;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --header-height: var(--mobile-header-height);
+    --footer-height: var(--mobile-footer-height);
+  }
+  
+  .container {
+    padding: 0 var(--mobile-padding);
   }
   
   .main-content {
-    min-height: calc(100vh - 120px);
+    min-height: calc(100vh - var(--mobile-header-height) - var(--mobile-footer-height));
+  }
+  
+  .container:not(.home-page) {
+    padding-top: 15px;
+  }
+  
+  .home-page .container {
+    padding-top: 5px !important;
+  }
+  
+  .content-section {
+    margin-bottom: 30px;
+  }
+  
+  .content-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .content-flex {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .hero-section {
+    margin: 0 0 30px 0;
+    padding: 20px 0 30px 0;
+  }
+  
+  .hero-section h1 {
+    font-size: 2rem;
+  }
+  
+  .hero-section .subtitle {
+    font-size: 1rem;
+  }
+  
+  /* Prevent mobile menu overlay from causing layout shift */
+  body.menu-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .mobile-menu-overlay {
+    z-index: 9999;
   }
 }
 
 @media (max-width: 480px) {
   .container {
-    padding: 0 10px;
+    padding: 0 12px;
+  }
+  
+  .content-section {
+    margin-bottom: 20px;
   }
   
   .main-content {
-    min-height: calc(100vh - 100px);
+    min-height: calc(100vh - var(--mobile-header-height) - 250px);
+  }
+  
+  .hero-section {
+    margin: 0 0 20px 0;
+    padding: 15px 0 25px 0;
+  }
+  
+  .hero-section h1 {
+    font-size: 1.7rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .mobile-menu-overlay {
+    background: rgba(0, 0, 0, 0.9);
+  }
+  
+  .layout.scrolled .sticky-header {
+    background: rgba(0, 0, 0, 0.98);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .layout.scrolled .sticky-header,
+  .mobile-menu-overlay,
+  .main-content {
+    transition: none;
+    animation: none;
   }
 }
 
@@ -77,5 +292,92 @@
   
   .main-content {
     min-height: auto;
+    padding-top: 0 !important;
+  }
+  
+  .container {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  .layout.scrolled .sticky-header {
+    position: static !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  
+  .hero-section {
+    background: none !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* Loading state */
+.layout.loading .main-content {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Scrollbar styling (prevents layout shift) */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Fix for iOS Safari 100vh issue */
+@supports (-webkit-touch-callout: none) {
+  .layout {
+    min-height: -webkit-fill-available;
+  }
+  
+  .main-content {
+    min-height: calc(-webkit-fill-available - var(--header-height) - var(--footer-height));
+  }
+}
+
+/* Ensure footer stays at bottom */
+footer {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* Global hero section style for homepage */
+.home-hero {
+  padding: 30px 0 40px 0;
+  text-align: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-bottom: 1px solid #334155;
+  margin-bottom: 40px;
+}
+
+.home-hero h1 {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.home-hero p {
+  font-size: 1.2rem;
+  color: #94a3b8;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .home-hero {
+    padding: 20px 0 30px 0;
+    margin-bottom: 30px;
+  }
+  
+  .home-hero h1 {
+    font-size: 2.2rem;
+  }
+  
+  .home-hero p {
+    font-size: 1rem;
+    padding: 0 15px;
   }
 }

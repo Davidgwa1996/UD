@@ -1,9 +1,49 @@
-/* HomePage.css - Updated for Real Images */
+/* HomePage.css - UPDATED with reduced header gap */
 
 .home-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: #ffffff;
+}
+
+/* ===== HOME HERO – REDUCED TOP PADDING & NO EXTRA MARGIN ===== */
+.home-hero {
+  text-align: center;
+  margin-top: 0;              /* remove any top margin */
+  padding-top: 1.5rem;        /* was 40px – now much tighter */
+  padding-bottom: 2rem;       /* was 40px – reduced */
+  padding-left: 20px;
+  padding-right: 20px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+  border-radius: 0 0 20px 20px;
+  margin-bottom: 40px;        /* keep bottom margin to separate from content */
+  border-bottom: 1px solid #334155;
+}
+
+.home-hero h1 {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  background: linear-gradient(135deg, #00e5ff 0%, #ffffff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.home-hero p {
+  font-size: 1.2rem;
+  color: #b0b0b0;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Price Fluctuation Container */
+.price-fluctuation-section {
+  margin: 40px auto;
+  max-width: 1400px;
+  padding: 0 20px;
 }
 
 /* Product Grid with Real Images */
@@ -98,6 +138,9 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .product-rating {
@@ -111,9 +154,18 @@
 .product-stock {
   font-size: 0.85rem;
   font-weight: 500;
-  background: rgba(0, 255, 157, 0.1);
   padding: 4px 10px;
   border-radius: 12px;
+}
+
+.product-stock.in-stock {
+  background: rgba(0, 255, 157, 0.1);
+  color: #00ff9d;
+}
+
+.product-stock.low-stock {
+  background: rgba(255, 166, 0, 0.1);
+  color: #ffa600;
 }
 
 .product-price {
@@ -148,6 +200,7 @@
 .add-to-cart-btn:hover {
   background: linear-gradient(135deg, #0088cc 0%, #006699 100%);
   transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 229, 255, 0.3);
 }
 
 .view-btn {
@@ -174,6 +227,7 @@
   background: linear-gradient(135deg, #00e5ff 0%, #ffffff 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 1rem;
 }
 
@@ -185,9 +239,16 @@
   line-height: 1.6;
 }
 
+/* Products Section */
+.products-section {
+  margin: 60px 0;
+  padding: 0 20px;
+}
+
 /* Market Features */
 .market-features {
   margin: 4rem 0;
+  padding: 0 20px;
 }
 
 .features-grid {
@@ -234,7 +295,7 @@
   background: rgba(0, 229, 255, 0.05);
   border-radius: 16px;
   padding: 2.5rem;
-  margin: 4rem 0;
+  margin: 4rem 20px;
   border: 1px solid rgba(0, 229, 255, 0.1);
 }
 
@@ -312,8 +373,49 @@
   box-shadow: 0 10px 30px rgba(0, 229, 255, 0.3);
 }
 
+/* Loading Screen */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+  padding: 40px;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(0, 229, 255, 0.1);
+  border-top: 4px solid #00e5ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .home-hero {
+    padding-top: 1.2rem;      /* even tighter on mobile */
+    padding-bottom: 1.5rem;
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-bottom: 30px;
+  }
+  
+  .home-hero h1 {
+    font-size: 2.2rem;
+  }
+  
+  .home-hero p {
+    font-size: 1rem;
+  }
+  
   .products-grid {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   }
@@ -329,9 +431,33 @@
   .product-actions {
     grid-template-columns: 1fr;
   }
+  
+  .products-section,
+  .market-features {
+    padding: 0 15px;
+  }
+  
+  .market-data-section {
+    margin: 4rem 15px;
+    padding: 2rem;
+  }
+  
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
 }
 
 @media (max-width: 480px) {
+  .home-hero {
+    padding-top: 1rem;
+    padding-bottom: 1.2rem;
+  }
+  
+  .home-hero h1 {
+    font-size: 1.8rem;
+  }
+  
   .products-grid {
     grid-template-columns: 1fr;
   }
@@ -346,5 +472,9 @@
   
   .product-image {
     height: 180px;
+  }
+  
+  .market-data-section {
+    padding: 1.5rem;
   }
 }

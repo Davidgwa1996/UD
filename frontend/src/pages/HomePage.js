@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Layout from '../components/Layout'; // ✅ Import Layout and pass isHomePage
 import ProductGrid from '../components/ProductGrid';
 import { api } from '../services/api';
 import { useCart } from '../context/CartContext';
@@ -8,7 +9,6 @@ import './HomePage.css';
 const HomePage = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [marketData, setMarketData] = useState({
@@ -19,63 +19,94 @@ const HomePage = () => {
     lastUpdate: '23:08'
   });
 
-  // Global market products data with REAL IMAGES - focusing on US, UK, China, Japan
+  // Global market products data with REAL IMAGES and AI PRICING
   const globalProducts = [
     // US Market Products
     { 
       id: 1, 
       name: "Tesla Model Y Performance", 
       category: "Electric Cars", 
-      price: 62990, 
+      price: 62990,
+      originalPrice: 63990,
       market: "US", 
       rating: 4.8, 
+      reviews: 445,
       stock: 12,
       image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=400&h=250&fit=crop&auto=format",
-      description: "Dual Motor All-Wheel Drive, 3.5s 0-60 mph, 303 miles range"
+      description: "Dual Motor All-Wheel Drive, 3.5s 0-60 mph, 303 miles range",
+      isAiPriced: true,
+      aiChange: -1.56,
+      aiLocation: "Liverpool",
+      aiUpdated: "3m ago"
     },
     { 
       id: 2, 
       name: "MacBook Pro 16\" M3 Max", 
       category: "Laptops", 
-      price: 3499, 
+      price: 3445,
+      originalPrice: 3599,
       market: "US", 
       rating: 4.9, 
+      reviews: 234,
       stock: 45,
       image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=250&fit=crop&auto=format",
-      description: "12-core CPU, 36GB RAM, 1TB SSD, Liquid Retina XDR display"
+      description: "12-core CPU, 36GB RAM, 1TB SSD, Liquid Retina XDR display",
+      isAiPriced: true,
+      aiChange: +0.29,
+      aiLocation: "Liverpool",
+      aiUpdated: "3m ago"
     },
     { 
       id: 3, 
       name: "iPhone 15 Pro Max 1TB", 
       category: "Smartphones", 
-      price: 1599, 
+      price: 2398,
+      originalPrice: 2199,
       market: "US", 
       rating: 4.7, 
+      reviews: 567,
       stock: 89,
       image: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=400&h=250&fit=crop&auto=format",
-      description: "Titanium design, A17 Pro chip, 5x Telephoto, Action button"
+      description: "Titanium design, A17 Pro chip, 5x Telephoto, Action button",
+      isAiPriced: true,
+      aiChange: +7.1,
+      aiLocation: "Edinburgh",
+      aiUpdated: "3m ago"
     },
     { 
       id: 4, 
       name: "NVIDIA RTX 4090 Founders", 
       category: "PC Components", 
-      price: 1599, 
+      price: 1599,
+      originalPrice: 1799,
       market: "US", 
       rating: 4.9, 
+      reviews: 128,
       stock: 14,
       image: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=400&h=250&fit=crop&auto=format",
-      description: "24GB GDDR6X, DLSS 3, 4K gaming at 120+ FPS"
+      description: "24GB GDDR6X, DLSS 3, 4K gaming at 120+ FPS",
+      isAiPriced: true,
+      isNew: true,
+      aiChange: -11.1,
+      aiLocation: "Manchester",
+      aiUpdated: "3m ago"
     },
     { 
       id: 5, 
       name: "Apple Vision Pro", 
       category: "VR/AR", 
-      price: 3499, 
+      price: 3499,
+      originalPrice: 3499,
       market: "US", 
       rating: 4.6, 
+      reviews: 89,
       stock: 31,
       image: "https://images.unsplash.com/photo-1593508512255-86ab42a8e620?w=400&h=250&fit=crop&auto=format",
-      description: "Spatial computing, 4K per eye, EyeSight display"
+      description: "Spatial computing, 4K per eye, EyeSight display",
+      isAiPriced: true,
+      aiChange: 0,
+      aiLocation: "London",
+      aiUpdated: "3m ago"
     },
     
     // UK Market Products
@@ -83,45 +114,70 @@ const HomePage = () => {
       id: 6, 
       name: "Range Rover Sport P550e", 
       category: "Luxury Cars", 
-      price: 89000, 
+      price: 89000,
+      originalPrice: 89995,
       market: "UK", 
       rating: 4.6, 
+      reviews: 67,
       stock: 8,
       image: "https://images.unsplash.com/photo-1593941707882-a5bba5338fe2?w=400&h=250&fit=crop&auto=format",
-      description: "PHEV, 542 hp, 0-60 in 4.3s, Air suspension"
+      description: "PHEV, 542 hp, 0-60 in 4.3s, Air suspension",
+      isAiPriced: true,
+      aiChange: -1.1,
+      aiLocation: "Birmingham",
+      aiUpdated: "3m ago"
     },
     { 
       id: 7, 
       name: "B&W Formation Wedge", 
       category: "Electronics", 
-      price: 2499, 
+      price: 2499,
+      originalPrice: 2699,
       market: "UK", 
       rating: 4.5, 
+      reviews: 34,
       stock: 23,
       image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=400&h=250&fit=crop&auto=format",
-      description: "Wireless hi-fi speaker, 240W, 360° sound"
+      description: "Wireless hi-fi speaker, 240W, 360° sound",
+      isAiPriced: true,
+      aiChange: -7.4,
+      aiLocation: "Leeds",
+      aiUpdated: "3m ago"
     },
     { 
       id: 8, 
       name: "Alienware m18 R2", 
       category: "Gaming", 
-      price: 3299, 
+      price: 3299,
+      originalPrice: 3499,
       market: "UK", 
       rating: 4.8, 
+      reviews: 56,
       stock: 17,
       image: "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400&h=250&fit=crop&auto=format",
-      description: "Intel Core i9-14900HX, RTX 4090, 18\" QHD+"
+      description: "Intel Core i9-14900HX, RTX 4090, 18\" QHD+",
+      isAiPriced: true,
+      isNew: true,
+      aiChange: -5.7,
+      aiLocation: "Glasgow",
+      aiUpdated: "3m ago"
     },
     { 
       id: 9, 
       name: "Jaguar I-PACE", 
       category: "Electric Cars", 
-      price: 69999, 
+      price: 69999,
+      originalPrice: 72990,
       market: "UK", 
       rating: 4.4, 
+      reviews: 42,
       stock: 15,
       image: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=400&h=250&fit=crop&auto=format",
-      description: "395 hp, 234 miles range, All-wheel drive"
+      description: "395 hp, 234 miles range, All-wheel drive",
+      isAiPriced: true,
+      aiChange: -4.1,
+      aiLocation: "Bristol",
+      aiUpdated: "3m ago"
     },
     
     // China Market Products
@@ -129,34 +185,53 @@ const HomePage = () => {
       id: 10, 
       name: "Xiaomi SU7 Max", 
       category: "Electric Cars", 
-      price: 41900, 
+      price: 41900,
+      originalPrice: 43900,
       market: "China", 
       rating: 4.7, 
+      reviews: 178,
       stock: 56,
       image: "https://images.unsplash.com/photo-1617868186608-87ae5c6f422c?w=400&h=250&fit=crop&auto=format",
-      description: "495 kW, 0-100 km/h in 2.78s, 800 km range"
+      description: "495 kW, 0-100 km/h in 2.78s, 800 km range",
+      isAiPriced: true,
+      isNew: true,
+      aiChange: -4.6,
+      aiLocation: "Shanghai",
+      aiUpdated: "3m ago"
     },
     { 
       id: 11, 
       name: "Huawei Mate 60 Pro+", 
       category: "Smartphones", 
-      price: 1299, 
+      price: 1299,
+      originalPrice: 1399,
       market: "China", 
       rating: 4.8, 
+      reviews: 234,
       stock: 120,
       image: "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400&h=250&fit=crop&auto=format",
-      description: "Kunlun glass, HarmonyOS, Satellite calling"
+      description: "Kunlun glass, HarmonyOS, Satellite calling",
+      isAiPriced: true,
+      aiChange: -7.1,
+      aiLocation: "Beijing",
+      aiUpdated: "3m ago"
     },
     { 
       id: 12, 
       name: "DJI Air 3 Fly More", 
       category: "Electronics", 
-      price: 1699, 
+      price: 1699,
+      originalPrice: 1799,
       market: "China", 
       rating: 4.9, 
+      reviews: 89,
       stock: 34,
       image: "https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=400&h=250&fit=crop&auto=format",
-      description: "Dual cameras, 46 min flight, 20 km range"
+      description: "Dual cameras, 46 min flight, 20 km range",
+      isAiPriced: true,
+      aiChange: -5.6,
+      aiLocation: "Shenzhen",
+      aiUpdated: "3m ago"
     },
     
     // Japan Market Products
@@ -164,34 +239,53 @@ const HomePage = () => {
       id: 13, 
       name: "Toyota Century SUV", 
       category: "Luxury Cars", 
-      price: 170000, 
+      price: 170000,
+      originalPrice: 175000,
       market: "Japan", 
       rating: 4.9, 
+      reviews: 23,
       stock: 5,
       image: "https://images.unsplash.com/photo-1555212697-194d092e3b8f?w=400&h=250&fit=crop&auto=format",
-      description: "V6 hybrid, Executive seating, Privacy glass"
+      description: "V6 hybrid, Executive seating, Privacy glass",
+      isAiPriced: true,
+      aiChange: -2.9,
+      aiLocation: "Tokyo",
+      aiUpdated: "3m ago"
     },
     { 
       id: 14, 
       name: "Sony A7RV Camera", 
       category: "Electronics", 
-      price: 3899, 
+      price: 3899,
+      originalPrice: 3999,
       market: "Japan", 
       rating: 4.8, 
+      reviews: 67,
       stock: 28,
       image: "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?w=400&h=250&fit=crop&auto=format",
-      description: "61MP, 8K video, AI autofocus, 5-axis stabilization"
+      description: "61MP, 8K video, AI autofocus, 5-axis stabilization",
+      isAiPriced: true,
+      aiChange: -2.5,
+      aiLocation: "Osaka",
+      aiUpdated: "3m ago"
     },
     { 
       id: 15, 
       name: "PlayStation 5 Pro", 
       category: "Gaming", 
-      price: 699, 
+      price: 699,
+      originalPrice: 749,
       market: "Japan", 
       rating: 4.9, 
+      reviews: 445,
       stock: 67,
       image: "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=400&h=250&fit=crop&auto=format",
-      description: "Disc Edition, 4K/120fps, Ray Tracing, 825GB SSD"
+      description: "Disc Edition, 4K/120fps, Ray Tracing, 825GB SSD",
+      isAiPriced: true,
+      isNew: true,
+      aiChange: -6.7,
+      aiLocation: "Nagoya",
+      aiUpdated: "3m ago"
     }
   ];
 
@@ -199,10 +293,7 @@ const HomePage = () => {
     fetchFeaturedProducts();
     updateMarketTime();
     
-    // Update time every minute
     const timeInterval = setInterval(updateMarketTime, 60000);
-    
-    // Simulate market updates
     const marketInterval = setInterval(simulateMarketUpdates, 15000);
     
     return () => {
@@ -215,10 +306,7 @@ const HomePage = () => {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
-    setMarketData(prev => ({
-      ...prev,
-      lastUpdate: `${hours}:${minutes}`
-    }));
+    setMarketData(prev => ({ ...prev, lastUpdate: `${hours}:${minutes}` }));
   };
 
   const simulateMarketUpdates = () => {
@@ -268,235 +356,129 @@ const HomePage = () => {
     navigate(`/product/${productId}`);
   };
 
-  const MobileMenu = () => (
-    <>
-      <div className={`mobile-menu-overlay ${isMobileMenuOpen ? 'active' : ''}`} 
-           onClick={() => setIsMobileMenuOpen(false)} />
-      <div className={`mobile-menu-panel ${isMobileMenuOpen ? 'active' : ''}`}>
-        <div className="mobile-menu-header">
-          <h2>Menu</h2>
-          <button className="mobile-menu-close" onClick={() => setIsMobileMenuOpen(false)}>
-            ✕
-          </button>
-        </div>
-        <div className="mobile-nav-items">
-          <button onClick={() => { navigate('/'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Home
-          </button>
-          <button onClick={() => { navigate('/category/cars'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Cars
-          </button>
-          <button onClick={() => { navigate('/category/electronics'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Electronics
-          </button>
-          <button onClick={() => { navigate('/category/laptops'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Laptops
-          </button>
-          <button onClick={() => { navigate('/category/smartphones'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Smartphones
-          </button>
-          <button onClick={() => { navigate('/category/gaming'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Gaming
-          </button>
-          <button onClick={() => { navigate('/category/luxury-cars'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Luxury Cars
-          </button>
-          <button onClick={() => { navigate('/category/electric-cars'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Electric Cars
-          </button>
-          <button onClick={() => { navigate('/contact'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Contact Us
-          </button>
-          <button onClick={() => { navigate('/market-analysis'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            Market Analysis
-          </button>
-          <button onClick={() => { navigate('/cart'); setIsMobileMenuOpen(false); }} className="mobile-nav-item">
-            View Cart
-          </button>
-        </div>
-      </div>
-    </>
-  );
-
   if (loading) {
     return (
-      <div className="loading-screen">
-        <div className="loading-spinner"></div>
-        <p>Loading global marketplace...</p>
-      </div>
+      <Layout isHomePage={true}>
+        <div className="loading-screen">
+          <div className="loading-spinner"></div>
+          <p>Loading global marketplace...</p>
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="home-page">
-      <MobileMenu />
+    <Layout isHomePage={true}>
+      {/* Hero Section – now with zero forced top padding from Layout */}
+      <div className="home-hero">
+        <h1>Global Marketplace Products</h1>
+        <p>AI-priced deals from US, UK, China, and Japan markets</p>
+      </div>
       
-      {/* Main Content - PRODUCTS FIRST as requested */}
-      <main className="main-content">
-        <div className="container">
-          {/* Products Section - FIRST THING VISIBLE */}
-          <section className="products-section">
-            <div className="section-header">
-              <h1 className="section-title">Global Marketplace Products</h1>
-              <p className="section-subtitle">
-                AI-priced deals from US, UK, China, and Japan markets
-              </p>
-            </div>
-            
-            <div className="products-grid">
-              {globalProducts.map(product => (
-                <div key={product.id} className="product-card">
-                  <div className="product-image">
-                    <img 
-                      src={product.image} 
-                      alt={product.name}
-                      className="product-image-real"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = `https://via.placeholder.com/400x250/cccccc/666666?text=${encodeURIComponent(product.name)}`;
-                      }}
-                    />
-                    <span className="product-market-badge">
-                      {product.market}
-                    </span>
-                  </div>
-                  
-                  <div className="product-details">
-                    <div className="product-category">{product.category}</div>
-                    <h3 className="product-name">{product.name}</h3>
-                    <p className="product-description">{product.description}</p>
-                    
-                    <div className="product-info">
-                      <div className="product-rating">
-                        ⭐ {product.rating}/5
-                      </div>
-                      <div className="product-stock" style={{
-                        color: product.stock > 10 ? '#00ff9d' : '#ff9d00'
-                      }}>
-                        {product.stock > 10 ? 'In Stock' : 'Low Stock'}
-                      </div>
-                    </div>
-                    
-                    <div className="product-price">
-                      ${product.price.toLocaleString()}
-                    </div>
-                    
-                    <div className="product-actions">
-                      <button
-                        onClick={() => handleAddToCart(product)}
-                        className="add-to-cart-btn"
-                      >
-                        Add to Cart
-                      </button>
-                      <button
-                        onClick={() => handleQuickView(product.id)}
-                        className="view-btn"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <div className="view-all-container">
-              <button 
-                onClick={() => navigate('/products')}
-                className="view-all-btn"
-              >
-                View All Products →
-              </button>
-            </div>
-          </section>
-
-          {/* Market Features - BELOW PRODUCTS as requested */}
-          <section className="market-features">
-            <div className="section-header">
-              <h2 className="section-title">Market Intelligence Features</h2>
-              <p className="section-subtitle">
-                Powered by AI for optimal pricing and insights
-              </p>
-            </div>
-            
-            <div className="features-grid">
-              <div className="feature-card">
-                <div className="feature-icon">📈</div>
-                <h3 className="feature-title">Live Market Indicator</h3>
-                <p className="feature-description">
-                  Real-time pricing trends across US, UK, China, Japan markets
-                </p>
-              </div>
-              
-              <div className="feature-card">
-                <div className="feature-icon">🤖</div>
-                <h3 className="feature-title">AI-Priced Classic Cars</h3>
-                <p className="feature-description">
-                  Machine learning algorithms determine fair market value
-                </p>
-              </div>
-              
-              <div className="feature-card">
-                <div className="feature-icon">⚡</div>
-                <h3 className="feature-title">Real-Time Market Prices</h3>
-                <p className="feature-description">
-                  Updated prices reflecting current market conditions
-                </p>
-              </div>
-              
-              <div className="feature-card">
-                <div className="feature-icon">🏷️</div>
-                <h3 className="feature-title">Featured Deals</h3>
-                <p className="feature-description">
-                  Curated best-value products from global markets
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Global Market Data */}
-          <section className="market-data-section">
-            <div className="section-header">
-              <h2 className="section-title">Global Market Indices</h2>
-              <p className="update-time">Updated: {marketData.lastUpdate}</p>
-            </div>
-            
-            <div className="market-indices">
-              <div className="market-index">
-                <span className="market-flag">🇺🇸</span>
-                <span className="market-name">US Market</span>
-                <span className={`market-value ${marketData.usIndex.includes('+') ? 'positive' : 'negative'}`}>
-                  {marketData.usIndex}
-                </span>
-              </div>
-              <div className="market-index">
-                <span className="market-flag">🇬🇧</span>
-                <span className="market-name">UK Market</span>
-                <span className={`market-value ${marketData.ukIndex.includes('+') ? 'positive' : 'negative'}`}>
-                  {marketData.ukIndex}
-                </span>
-              </div>
-              <div className="market-index">
-                <span className="market-flag">🇨🇳</span>
-                <span className="market-name">China Market</span>
-                <span className={`market-value ${marketData.chinaIndex.includes('+') ? 'positive' : 'negative'}`}>
-                  {marketData.chinaIndex}
-                </span>
-              </div>
-              <div className="market-index">
-                <span className="market-flag">🇯🇵</span>
-                <span className="market-name">Japan Market</span>
-                <span className={`market-value ${marketData.japanIndex.includes('+') ? 'positive' : 'negative'}`}>
-                  {marketData.japanIndex}
-                </span>
-              </div>
-            </div>
-          </section>
+      {/* Main Products Grid */}
+      <section className="products-section">
+        <div className="section-header">
+          <h2 className="section-title">Featured Global Products</h2>
+          <p className="section-subtitle">
+            Curated selection from verified international sellers • AI-powered dynamic pricing
+          </p>
         </div>
-      </main>
+        
+        <ProductGrid products={globalProducts} columns={3} />
+        
+        <div className="view-all-container">
+          <button 
+            onClick={() => navigate('/products')}
+            className="view-all-btn"
+          >
+            View All Products →
+          </button>
+        </div>
+      </section>
 
-      {/* REMOVED THE FOOTER - Layout component handles it */}
-    </div>
+      {/* Market Features */}
+      <section className="market-features">
+        <div className="section-header">
+          <h2 className="section-title">Market Intelligence Features</h2>
+          <p className="section-subtitle">
+            Powered by AI for optimal pricing and insights
+          </p>
+        </div>
+        
+        <div className="features-grid">
+          <div className="feature-card">
+            <div className="feature-icon">📈</div>
+            <h3 className="feature-title">Live Market Indicator</h3>
+            <p className="feature-description">
+              Real-time pricing trends across US, UK, China, Japan markets
+            </p>
+          </div>
+          
+          <div className="feature-card">
+            <div className="feature-icon">🤖</div>
+            <h3 className="feature-title">AI-Priced Classic Cars</h3>
+            <p className="feature-description">
+              Machine learning algorithms determine fair market value
+            </p>
+          </div>
+          
+          <div className="feature-card">
+            <div className="feature-icon">⚡</div>
+            <h3 className="feature-title">Real-Time Market Prices</h3>
+            <p className="feature-description">
+              Updated prices reflecting current market conditions
+            </p>
+          </div>
+          
+          <div className="feature-card">
+            <div className="feature-icon">🏷️</div>
+            <h3 className="feature-title">Featured Deals</h3>
+            <p className="feature-description">
+              Curated best-value products from global markets
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Global Market Data */}
+      <section className="market-data-section">
+        <div className="section-header">
+          <h2 className="section-title">Global Market Indices</h2>
+          <p className="update-time">Updated: {marketData.lastUpdate}</p>
+        </div>
+        
+        <div className="market-indices">
+          <div className="market-index">
+            <span className="market-flag">🇺🇸</span>
+            <span className="market-name">US Market</span>
+            <span className={`market-value ${marketData.usIndex.includes('+') ? 'positive' : 'negative'}`}>
+              {marketData.usIndex}
+            </span>
+          </div>
+          <div className="market-index">
+            <span className="market-flag">🇬🇧</span>
+            <span className="market-name">UK Market</span>
+            <span className={`market-value ${marketData.ukIndex.includes('+') ? 'positive' : 'negative'}`}>
+              {marketData.ukIndex}
+            </span>
+          </div>
+          <div className="market-index">
+            <span className="market-flag">🇨🇳</span>
+            <span className="market-name">China Market</span>
+            <span className={`market-value ${marketData.chinaIndex.includes('+') ? 'positive' : 'negative'}`}>
+              {marketData.chinaIndex}
+            </span>
+          </div>
+          <div className="market-index">
+            <span className="market-flag">🇯🇵</span>
+            <span className="market-name">Japan Market</span>
+            <span className={`market-value ${marketData.japanIndex.includes('+') ? 'positive' : 'negative'}`}>
+              {marketData.japanIndex}
+            </span>
+          </div>
+        </div>
+      </section>
+    </Layout>
   );
 };
 
