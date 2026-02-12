@@ -69,7 +69,7 @@
 /* === Base Body & HTML === */
 html {
   scroll-behavior: smooth;
-  scrollbar-gutter: stable; /* Prevent layout shift when scrollbar appears */
+  scrollbar-gutter: stable;
   overflow-x: hidden;
 }
 
@@ -98,7 +98,7 @@ body {
   flex-direction: column;
   position: relative;
   width: 100%;
-  overflow: hidden;
+  /* overflow: hidden; – REMOVED: prevents clipping of button content */
 }
 
 .App {
@@ -830,7 +830,7 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* === Buttons === */
+/* === Buttons – UPDATED: removed white-space: nowrap for better text wrapping === */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -847,7 +847,7 @@ input:focus, select:focus, textarea:focus {
   transition: all var(--transition-normal);
   position: relative;
   z-index: 1;
-  white-space: nowrap;
+  /* white-space: nowrap; – REMOVED to allow button text to wrap when needed */
 }
 
 .btn:hover {

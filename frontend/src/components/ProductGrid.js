@@ -52,7 +52,7 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
     };
   };
 
-  // ---------- Non‑AI product badges (NEW, REFURBISHED, etc.) ----------
+  // ---------- Non‑AI product badges ----------
   const getProductBadge = (product) => {
     if (!product) return null;
     if (product.isNew) return { label: 'NEW', class: 'badge-new' };
@@ -185,19 +185,19 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
                 </div>
               </div>
 
-              {/* ===== ACTION BUTTONS – UPDATED ===== */}
+              {/* ===== ACTION BUTTONS – SIMPLIFIED LABELS ===== */}
               <div className="product-actions">
                 <button 
-                  className="btn btn-primary ai-best-price"
+                  className="btn btn-primary"
                   onClick={() => handleAddToCart(product)}
                   disabled={!product.stock || product.stock === 0}
                 >
-                  Buy Now - AI Best Price
+                  Buy Now
                 </button>
                 
                 <div className="secondary-actions">
                   <Link to={`/market-analysis/${product.id}`} className="btn btn-outline">
-                    View Market Analysis
+                    Market Analysis
                   </Link>
                   <button 
                     className="btn btn-outline"
