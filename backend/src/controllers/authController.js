@@ -4,14 +4,17 @@ const { validationResult } = require('express-validator');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
+// ------------------------------------------------------------------
 // Generate JWT Token
-const generateToken = (id, market = 'US') => {
-  return jwt.sign({ id, market }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '30d'
-  });
+// ------------------------------------------------------------------
+const generateToken = (id, market = 'US', rememberMe = false) => {
+  const expiresIn = rememberMe ? '90d' : '30d';
+  return jwt.sign({ id, market }, process.env.JWT_SECRET, { expiresIn });
 };
 
-// Email transporter setup
+// ------------------------------------------------------------------
+// Email Transporter (Gmail – replace with your SMTP in production)
+// ------------------------------------------------------------------
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -20,9 +23,11 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// ------------------------------------------------------------------
 // @desc    Register user with market preference
 // @route   POST /api/auth/register
 // @access  Public
+// ------------------------------------------------------------------
 const registerUser = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -44,7 +49,6 @@ const registerUser = async (req, res) => {
       acceptTerms 
     } = req.body;
 
-    // Check if user accepted terms
     if (!acceptTerms) {
       return res.status(400).json({
         success: false,
@@ -52,8 +56,7 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // Check if user exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: email.toLowerCase() });
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -61,7 +64,6 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // Create user with market preference
     const user = await User.create({
       firstName,
       lastName,
@@ -79,37 +81,34 @@ const registerUser = async (req, res) => {
     // Generate verification token
     const verificationToken = crypto.randomBytes(20).toString('hex');
     user.verificationToken = verificationToken;
-    user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
     await user.save();
 
     // Send verification email
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
     
-    const mailOptions = {
+    await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
       subject: 'Verify Your Email - UniDigital Marketplace',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Welcome to UniDigital Marketplace!</h2>
-          <p>Hello ${firstName},</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+          <h2 style="color: #2563eb;">Welcome to UniDigital Marketplace!</h2>
+          <p>Hello <strong>${firstName}</strong>,</p>
           <p>Please verify your email address by clicking the button below:</p>
-          <a href="${verificationUrl}" style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;">
+          <a href="${verificationUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600;">
             Verify Email
           </a>
-          <p>This link will expire in 24 hours.</p>
-          <p>If you didn't create an account, you can ignore this email.</p>
-          <hr>
-          <p style="color: #666; font-size: 12px;">
-            UniDigital Marketplace - Global Tech & Automotive
+          <p style="color: #666;">This link will expire in 24 hours.</p>
+          <p style="color: #666;">If you didn't create an account, you can ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px; text-align: center;">
+            UniDigital Marketplace – Global Tech & Automotive
           </p>
         </div>
       `
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
-
-    // Generate auth token
     const token = generateToken(user._id, market);
 
     res.status(201).json({
@@ -131,19 +130,20 @@ const registerUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Registration failed. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
     });
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Login user with market support
 // @route   POST /api/auth/login
 // @access  Public
+// ------------------------------------------------------------------
 const loginUser = async (req, res) => {
   try {
     const { email, password, market = 'US', rememberMe = false } = req.body;
 
-    // Validate email & password
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -151,7 +151,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Check for user
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
 
     if (!user) {
@@ -161,7 +160,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Check if account is verified
     if (!user.isVerified) {
       return res.status(403).json({
         success: false,
@@ -170,7 +168,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Check if account is active
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
@@ -178,15 +175,12 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Check password
     const isPasswordMatch = await user.comparePassword(password);
 
     if (!isPasswordMatch) {
-      // Track failed attempts
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
       user.lastFailedLogin = new Date();
       
-      // Lock account after 5 failed attempts
       if (user.failedLoginAttempts >= 5) {
         user.isLocked = true;
         user.lockUntil = Date.now() + 30 * 60 * 1000; // 30 minutes
@@ -199,31 +193,24 @@ const loginUser = async (req, res) => {
         message: user.isLocked 
           ? 'Account locked due to too many failed attempts. Try again in 30 minutes.'
           : 'Invalid email or password',
-        attemptsRemaining: 5 - user.failedLoginAttempts
+        attemptsRemaining: 5 - (user.failedLoginAttempts || 0)
       });
     }
 
-    // Reset failed attempts on successful login
+    // Reset failed attempts on success
     user.failedLoginAttempts = 0;
     user.isLocked = false;
     user.lockUntil = undefined;
     user.lastLogin = new Date();
-    user.market = market; // Update user's market preference
+    user.market = market;
     await user.save();
 
-    // Generate token with custom expiration for remember me
-    const tokenExpiry = rememberMe ? '90d' : '1d';
-    const token = jwt.sign(
-      { id: user._id, market, rememberMe }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: tokenExpiry }
-    );
+    const token = generateToken(user._id, market, rememberMe);
 
     res.json({
       success: true,
       message: 'Login successful',
       token,
-      tokenExpiry,
       user: {
         id: user._id,
         firstName: user.firstName,
@@ -233,7 +220,7 @@ const loginUser = async (req, res) => {
         role: user.role,
         avatar: user.avatar,
         preferences: user.preferences,
-        cart: user.cart || [],
+        cart: user.cart || { items: [], total: 0 },
         wishlist: user.wishlist || []
       }
     });
@@ -242,14 +229,16 @@ const loginUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Login failed. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
     });
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Verify email
 // @route   GET /api/auth/verify-email/:token
 // @access  Public
+// ------------------------------------------------------------------
 const verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
@@ -284,14 +273,16 @@ const verifyEmail = async (req, res) => {
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Resend verification email
 // @route   POST /api/auth/resend-verification
 // @access  Public
+// ------------------------------------------------------------------
 const resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
       return res.status(404).json({
@@ -307,33 +298,29 @@ const resendVerification = async (req, res) => {
       });
     }
 
-    // Generate new verification token
     const verificationToken = crypto.randomBytes(20).toString('hex');
     user.verificationToken = verificationToken;
     user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
     await user.save();
 
-    // Send verification email
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
     
-    const mailOptions = {
+    await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
       subject: 'Verify Your Email - UniDigital Marketplace',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Verify Your Email</h2>
-          <p>Hello ${user.firstName},</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+          <h2 style="color: #2563eb;">Verify Your Email</h2>
+          <p>Hello <strong>${user.firstName}</strong>,</p>
           <p>Click the button below to verify your email:</p>
-          <a href="${verificationUrl}" style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;">
+          <a href="${verificationUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600;">
             Verify Email
           </a>
-          <p>This link will expire in 24 hours.</p>
+          <p style="color: #666;">This link will expire in 24 hours.</p>
         </div>
       `
-    };
-
-    await transporter.sendMail(mailOptions);
+    });
 
     res.json({
       success: true,
@@ -348,9 +335,11 @@ const resendVerification = async (req, res) => {
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Forgot password
 // @route   POST /api/auth/forgot-password
 // @access  Public
+// ------------------------------------------------------------------
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -364,34 +353,30 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    // Generate reset token
     const resetToken = crypto.randomBytes(20).toString('hex');
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    // Send reset email
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     
-    const mailOptions = {
+    await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
       subject: 'Password Reset - UniDigital Marketplace',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Reset Your Password</h2>
-          <p>Hello ${user.firstName},</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+          <h2 style="color: #2563eb;">Reset Your Password</h2>
+          <p>Hello <strong>${user.firstName}</strong>,</p>
           <p>You requested a password reset. Click the button below to reset your password:</p>
-          <a href="${resetUrl}" style="background: #0066cc; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;">
+          <a href="${resetUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600;">
             Reset Password
           </a>
-          <p>This link will expire in 1 hour.</p>
-          <p>If you didn't request this, please ignore this email.</p>
+          <p style="color: #666;">This link will expire in 1 hour.</p>
+          <p style="color: #666;">If you didn't request this, please ignore this email.</p>
         </div>
       `
-    };
-
-    await transporter.sendMail(mailOptions);
+    });
 
     res.json({
       success: true,
@@ -406,9 +391,11 @@ const forgotPassword = async (req, res) => {
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Reset password
 // @route   POST /api/auth/reset-password/:token
 // @access  Public
+// ------------------------------------------------------------------
 const resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
@@ -444,9 +431,11 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Get current user with full profile
 // @route   GET /api/auth/me
 // @access  Private
+// ------------------------------------------------------------------
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
@@ -457,7 +446,7 @@ const getMe = async (req, res) => {
         select: 'name price image market'
       })
       .populate('orders')
-      .select('-password -resetPasswordToken -resetPasswordExpires');
+      .select('-password -resetPasswordToken -resetPasswordExpires -verificationToken -verificationExpires');
 
     if (!user) {
       return res.status(404).json({
@@ -500,9 +489,11 @@ const getMe = async (req, res) => {
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Update user profile
 // @route   PUT /api/auth/update-profile
 // @access  Private
+// ------------------------------------------------------------------
 const updateProfile = async (req, res) => {
   try {
     const { 
@@ -547,14 +538,16 @@ const updateProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update profile',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
     });
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Change password
 // @route   PUT /api/auth/change-password
 // @access  Private
+// ------------------------------------------------------------------
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -601,26 +594,24 @@ const changePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    // Send password change notification email
-    const mailOptions = {
+    // Send password change notification
+    await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
       subject: 'Password Changed - UniDigital Marketplace',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Password Changed Successfully</h2>
-          <p>Hello ${user.firstName},</p>
-          <p>Your password was changed successfully on ${new Date().toLocaleDateString()}.</p>
-          <p>If you didn't make this change, please contact support immediately.</p>
-          <hr>
-          <p style="color: #666; font-size: 12px;">
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+          <h2 style="color: #2563eb;">Password Changed Successfully</h2>
+          <p>Hello <strong>${user.firstName}</strong>,</p>
+          <p>Your password was changed successfully on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}.</p>
+          <p style="color: #666;">If you didn't make this change, please contact support immediately.</p>
+          <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px; text-align: center;">
             UniDigital Marketplace Security Team
           </p>
         </div>
       `
-    };
-
-    await transporter.sendMail(mailOptions);
+    });
 
     res.json({
       success: true,
@@ -635,9 +626,11 @@ const changePassword = async (req, res) => {
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Upload profile picture
 // @route   POST /api/auth/upload-avatar
 // @access  Private
+// ------------------------------------------------------------------
 const uploadAvatar = async (req, res) => {
   try {
     if (!req.file) {
@@ -647,9 +640,13 @@ const uploadAvatar = async (req, res) => {
       });
     }
 
+    // ✅ Store publicly accessible URL – works on Render & localhost
+    const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+    const avatarUrl = `${baseUrl}/uploads/${req.file.filename}`;
+
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { avatar: req.file.path },
+      { avatar: avatarUrl },
       { new: true }
     ).select('-password');
 
@@ -667,9 +664,11 @@ const uploadAvatar = async (req, res) => {
   }
 };
 
-// @desc    Delete account
+// ------------------------------------------------------------------
+// @desc    Delete account (soft delete)
 // @route   DELETE /api/auth/delete-account
 // @access  Private
+// ------------------------------------------------------------------
 const deleteAccount = async (req, res) => {
   try {
     const { password } = req.body;
@@ -692,7 +691,6 @@ const deleteAccount = async (req, res) => {
       });
     }
 
-    // Soft delete - mark as inactive
     user.isActive = false;
     user.deletedAt = new Date();
     await user.save();
@@ -710,12 +708,13 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+// ------------------------------------------------------------------
 // @desc    Logout user
 // @route   POST /api/auth/logout
 // @access  Private
+// ------------------------------------------------------------------
 const logoutUser = async (req, res) => {
   try {
-    // Update last active
     await User.findByIdAndUpdate(req.user.id, {
       lastActive: new Date()
     });
@@ -733,6 +732,9 @@ const logoutUser = async (req, res) => {
   }
 };
 
+// ------------------------------------------------------------------
+// ✅ EXPORT ALL CONTROLLER FUNCTIONS
+// ------------------------------------------------------------------
 module.exports = {
   registerUser,
   loginUser,

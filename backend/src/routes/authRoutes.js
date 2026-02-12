@@ -1,6 +1,10 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
+
+// ------------------------------------------------------------------
+// CONTROLLER IMPORTS (all functions exist in authController.js)
+// ------------------------------------------------------------------
 const {
   registerUser,
   loginUser,
@@ -13,18 +17,38 @@ const {
   changePassword,
   uploadAvatar,
   deleteAccount,
-  logoutUser,
-  googleAuth,
-  googleCallback,
-  appleAuth,
-  appleCallback
+  logoutUser
 } = require('../controllers/authController');
+
+// ------------------------------------------------------------------
+// MIDDLEWARE IMPORTS
+// ------------------------------------------------------------------
 const { protect } = require('../middleware/authMiddleware');
 const { validate } = require('../middleware/validationMiddleware');
-const { upload } = require('../middleware/uploadMiddleware');
-const passport = require('passport');
+const { multer } = require('../middleware/uploadMiddleware'); // ✅ FIXED IMPORT
 
-// Validation rules matching AuthPage
+// ------------------------------------------------------------------
+// HELPER FUNCTIONS (defined before use)
+// ------------------------------------------------------------------
+const checkPasswordStrength = (password) => {
+  if (password.length < 8) return 'weak';
+  if (password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password)) return 'strong';
+  return 'medium';
+};
+
+const getPasswordSuggestions = (password) => {
+  const suggestions = [];
+  if (password.length < 8) suggestions.push('Use at least 8 characters');
+  if (!/[A-Z]/.test(password)) suggestions.push('Add at least one uppercase letter');
+  if (!/[a-z]/.test(password)) suggestions.push('Add at least one lowercase letter');
+  if (!/[0-9]/.test(password)) suggestions.push('Add at least one number');
+  if (!/[@$!%*?&]/.test(password)) suggestions.push('Add at least one special character (@$!%*?&)');
+  return suggestions;
+};
+
+// ------------------------------------------------------------------
+// VALIDATION RULES
+// ------------------------------------------------------------------
 const registerValidation = [
   body('name')
     .notEmpty().withMessage('Full name is required')
@@ -41,7 +65,6 @@ const registerValidation = [
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number')
     .custom((value, { req }) => {
-      // Check password strength like frontend
       const strength = checkPasswordStrength(value);
       if (strength === 'weak') {
         throw new Error('Password is too weak. Use at least 8 characters with uppercase letters and numbers');
@@ -147,7 +170,6 @@ const changePasswordValidation = [
       if (value === req.body.currentPassword) {
         throw new Error('New password must be different from current password');
       }
-      
       const strength = checkPasswordStrength(value);
       if (strength === 'weak') {
         throw new Error('Password is too weak. Use at least 8 characters with uppercase letters and numbers');
@@ -169,14 +191,9 @@ const deleteAccountValidation = [
     .notEmpty().withMessage('Password is required to delete your account')
 ];
 
-// Helper function matching frontend password strength check
-const checkPasswordStrength = (password) => {
-  if (password.length < 8) return 'weak';
-  if (password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password)) return 'strong';
-  return 'medium';
-};
-
-// Public Routes
+// ------------------------------------------------------------------
+// PUBLIC ROUTES
+// ------------------------------------------------------------------
 router.post('/register', registerValidation, validate, registerUser);
 router.post('/login', loginValidation, validate, loginUser);
 router.post('/forgot-password', forgotPasswordValidation, validate, forgotPassword);
@@ -184,15 +201,8 @@ router.post('/reset-password/:token', resetPasswordValidation, validate, resetPa
 router.post('/resend-verification', resendVerificationValidation, validate, resendVerification);
 router.get('/verify-email/:token', verifyEmail);
 
-// OAuth Routes
-router.get('/google', googleAuth);
-router.get('/google/callback', googleCallback);
-router.get('/apple', appleAuth);
-router.get('/apple/callback', appleCallback);
-
 // Demo account endpoint (for testing)
 router.post('/demo-login', (req, res) => {
-  // Demo account for testing (matches AuthPage demo credentials)
   const demoAccount = {
     token: 'demo_jwt_token_' + Date.now(),
     user: {
@@ -213,7 +223,6 @@ router.post('/demo-login', (req, res) => {
       }
     }
   };
-  
   res.json({
     success: true,
     message: 'Demo login successful',
@@ -223,42 +232,27 @@ router.post('/demo-login', (req, res) => {
   });
 });
 
-// Protected Routes
-router.get('/me', protect, getMe);
-router.put('/update-profile', protect, updateProfileValidation, validate, updateProfile);
-router.put('/change-password', protect, changePasswordValidation, validate, changePassword);
-router.post('/upload-avatar', protect, upload.single('avatar'), uploadAvatar);
-router.post('/logout', protect, logoutUser);
-router.delete('/delete-account', protect, deleteAccountValidation, validate, deleteAccount);
-
-// Password strength check endpoint (for frontend real-time validation)
+// Password strength check endpoint
 router.post('/check-password-strength', [
   body('password').notEmpty().withMessage('Password is required')
 ], validate, (req, res) => {
   const { password } = req.body;
   const strength = checkPasswordStrength(password);
-  
-  const strengthInfo = {
-    strength: strength,
-    score: strength === 'weak' ? 1 : strength === 'medium' ? 2 : 3,
-    suggestions: getPasswordSuggestions(password)
-  };
-  
+  const suggestions = getPasswordSuggestions(password);
   res.json({
     success: true,
-    ...strengthInfo
+    strength,
+    score: strength === 'weak' ? 1 : strength === 'medium' ? 2 : 3,
+    suggestions
   });
 });
 
-// Email validation endpoint (for frontend real-time validation)
+// Email validation endpoint
 router.post('/validate-email', [
   body('email').isEmail().withMessage('Please include a valid email address')
 ], validate, async (req, res) => {
   const { email } = req.body;
-  
-  // In production, check if email exists in database
-  const emailExists = false; // Replace with actual database check
-  
+  const emailExists = false; // Replace with actual DB check if needed
   res.json({
     success: true,
     isValid: true,
@@ -267,20 +261,16 @@ router.post('/validate-email', [
   });
 });
 
-// Statistics endpoint (for AuthPage stats display)
+// Statistics endpoint
 router.get('/stats', (req, res) => {
-  const stats = {
+  res.json({
+    success: true,
     products: 50000,
     accuracy: 98.7,
     support: '24/7',
     users: 150000,
     countries: 150,
     satisfaction: 96.5
-  };
-  
-  res.json({
-    success: true,
-    ...stats
   });
 });
 
@@ -310,55 +300,24 @@ router.post('/contact', [
   body('message').notEmpty().withMessage('Message is required')
 ], validate, (req, res) => {
   const { name, email, message } = req.body;
-  
-  // In production, send email or save to database
   console.log('Contact form submission:', { name, email, message });
-  
   res.json({
     success: true,
     message: 'Thank you for your message. We will respond within 24 hours.'
   });
 });
 
-// Get market-specific features (for AuthPage feature display)
+// Get market-specific features
 router.get('/features', (req, res) => {
   const features = [
-    {
-      icon: '🤖',
-      title: 'AI-Powered Pricing',
-      description: 'Real-time market analysis for the best prices'
-    },
-    {
-      icon: '🌍',
-      title: 'Global Marketplace',
-      description: 'Shop from verified sellers worldwide'
-    },
-    {
-      icon: '🛡️',
-      title: 'Secure Transactions',
-      description: 'Protected payments and buyer guarantees'
-    },
-    {
-      icon: '🚚',
-      title: 'Fast Shipping',
-      description: 'International delivery with tracking'
-    },
-    {
-      icon: '💳',
-      title: 'Multiple Payment Options',
-      description: 'PayPal, Credit Cards, Apple Pay, and more'
-    },
-    {
-      icon: '📊',
-      title: 'Market Insights',
-      description: 'AI-driven analytics and price trends'
-    }
+    { icon: '🤖', title: 'AI-Powered Pricing', description: 'Real-time market analysis for the best prices' },
+    { icon: '🌍', title: 'Global Marketplace', description: 'Shop from verified sellers worldwide' },
+    { icon: '🛡️', title: 'Secure Transactions', description: 'Protected payments and buyer guarantees' },
+    { icon: '🚚', title: 'Fast Shipping', description: 'International delivery with tracking' },
+    { icon: '💳', title: 'Multiple Payment Options', description: 'PayPal, Credit Cards, Apple Pay, and more' },
+    { icon: '📊', title: 'Market Insights', description: 'AI-driven analytics and price trends' }
   ];
-  
-  res.json({
-    success: true,
-    features
-  });
+  res.json({ success: true, features });
 });
 
 // Health check endpoint
@@ -371,31 +330,14 @@ router.get('/health', (req, res) => {
   });
 });
 
-// Helper function for password suggestions
-const getPasswordSuggestions = (password) => {
-  const suggestions = [];
-  
-  if (password.length < 8) {
-    suggestions.push('Use at least 8 characters');
-  }
-  
-  if (!/[A-Z]/.test(password)) {
-    suggestions.push('Add at least one uppercase letter');
-  }
-  
-  if (!/[a-z]/.test(password)) {
-    suggestions.push('Add at least one lowercase letter');
-  }
-  
-  if (!/[0-9]/.test(password)) {
-    suggestions.push('Add at least one number');
-  }
-  
-  if (!/[@$!%*?&]/.test(password)) {
-    suggestions.push('Add at least one special character (@$!%*?&)');
-  }
-  
-  return suggestions;
-};
+// ------------------------------------------------------------------
+// PROTECTED ROUTES (require authentication)
+// ------------------------------------------------------------------
+router.get('/me', protect, getMe);
+router.put('/update-profile', protect, updateProfileValidation, validate, updateProfile);
+router.put('/change-password', protect, changePasswordValidation, validate, changePassword);
+router.post('/upload-avatar', protect, multer.single('avatar'), uploadAvatar); // ✅ FIXED UPLOAD MIDDLEWARE
+router.post('/logout', protect, logoutUser);
+router.delete('/delete-account', protect, deleteAccountValidation, validate, deleteAccount);
 
 module.exports = router;
