@@ -48,7 +48,7 @@ connectDB();
 // Define allowed origins (local development + production frontend)
 const allowedOrigins = [
   'http://localhost:3000',                           // Local development
-  'https://unidigitalcom-front-end-xs71.onrender.com' // ✅ Your live frontend URL
+  'https://unidigitalcom-front-end.onrender.com' // ✅ Your live frontend URL
 ];
 
 app.use(cors({
