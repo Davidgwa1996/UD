@@ -1,25 +1,49 @@
-/* ========== PRODUCT GRID – WIDE ENOUGH, NO CUTOFFS ========== */
+/* ========== PRODUCT GRID – FULL VISIBILITY, SCROLLABLE ========== */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); /* ⬅ increased to 380px */
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 24px;
   padding: 20px;
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: 100%;
   box-sizing: border-box;
+  
+  /* Enable horizontal scroll if content overflows */
+  overflow-x: auto;
+  overflow-y: visible;
+  
+  /* Styled scrollbar for better UX */
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #1e293b;
 }
 
-/* ---------- PRODUCT CARD – NO CLIPPING ALLOWED ---------- */
+.product-grid::-webkit-scrollbar {
+  height: 8px;
+}
+.product-grid::-webkit-scrollbar-track {
+  background: #1e293b;
+  border-radius: 10px;
+}
+.product-grid::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 10px;
+}
+.product-grid::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
+/* ---------- PRODUCT CARD – NEVER HIDE CONTENT ---------- */
 .product-card {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
-  overflow: visible !important;        /* ⬅ CRITICAL: never clip content */
+  overflow: visible !important;   /* CRITICAL: no clipping */
   transition: 0.3s ease;
   width: 100%;
+  min-width: 300px;
+  max-width: 100%;
   box-sizing: border-box;
 }
 
@@ -29,7 +53,7 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* ========== AI PRICE BADGE (unchanged) ========== */
+/* ========== AI PRICE BADGE ========== */
 .ai-price-badge {
   background: linear-gradient(135deg, #0f172a, #1e1e2f);
   border-radius: 12px;
@@ -101,7 +125,7 @@
   position: relative;
   height: 200px;
   border-radius: 16px;
-  overflow: hidden;          /* image only – OK */
+  overflow: hidden;
   background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(41,121,255,0.1));
 }
 
@@ -115,6 +139,23 @@
 .product-card:hover .product-image img {
   transform: scale(1.05);
 }
+
+.product-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.badge-new { background: linear-gradient(135deg, #64ffda, #00bfa5); color: #0a0a1a; }
+.badge-refurbished { background: linear-gradient(135deg, #ffd740, #ffab00); color: #0a0a1a; }
+.badge-ai { background: linear-gradient(135deg, #00e5ff, #2979ff); color: white; }
+.badge-discount { background: linear-gradient(135deg, #ff5252, #ff4081); color: white; }
 
 /* ---------- PRODUCT INFO ---------- */
 .product-info {
@@ -240,7 +281,7 @@
   white-space: nowrap;
 }
 
-/* ========== BUTTONS – 100% VISIBLE, NO EXCUSES ========== */
+/* ========== BUTTONS – 100% VISIBLE ========== */
 .product-actions {
   display: flex;
   flex-direction: column;
@@ -253,10 +294,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 20px;
+  padding: 12px 16px;
   border-radius: 12px;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: 0.3s ease;
   border: none;
@@ -264,10 +305,9 @@
   text-align: center;
   width: 100%;
   box-sizing: border-box;
-  white-space: nowrap !important;      /* ⬅ force single line */
-  overflow: visible !important;        /* ⬅ never clip */
+  white-space: nowrap;        /* keep text on one line */
   line-height: 1;
-  min-width: 0;                       /* allow flex to shrink if needed, but we control width */
+  overflow: visible !important;
 }
 
 .btn-primary {
@@ -275,9 +315,14 @@
   color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(41,121,255,0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-outline {
@@ -286,47 +331,87 @@
   color: #2979ff;
   padding: 10px 16px;
   font-size: 0.9rem;
-  white-space: nowrap !important;
+  white-space: nowrap;
 }
 
 .btn-outline:hover {
   background: rgba(41,121,255,0.1);
 }
 
-/* ===== SECONDARY ACTIONS – FIXED WIDTH, NO OVERFLOW ===== */
 .secondary-actions {
   display: flex;
   gap: 12px;
   width: 100%;
+  flex-wrap: wrap;
 }
 
 .secondary-actions .btn-outline {
-  flex: 1 1 0;                /* equal width */
-  min-width: 150px !important; /* ⬅ guaranteed room for "Market Analysis" and "Add to Cart" */
-  max-width: 100%;
-  white-space: nowrap !important;
-  overflow: visible !important;
+  flex: 1 1 140px;            /* equal width with minimum */
+  min-width: 130px;
 }
 
-/* ========== RESPONSIVE – STACK ON MOBILE ========== */
-@media (max-width: 800px) {
-  .product-grid {
-    grid-template-columns: 1fr;        /* force single column */
+/* ===== MEDIA QUERIES FOR OPTIMAL BUTTON SIZING ===== */
+@media (max-width: 900px) {
+  .btn {
+    font-size: 0.9rem;
+    padding: 10px 12px;
+  }
+  .btn-outline {
+    font-size: 0.85rem;
+    padding: 8px 12px;
   }
 }
 
 @media (max-width: 768px) {
+  .product-grid {
+    grid-template-columns: 1fr;   /* stack cards vertically */
+    overflow-x: visible;
+  }
   .secondary-actions {
     flex-direction: column;
   }
   .secondary-actions .btn-outline {
     width: 100%;
-    min-width: 0 !important;          /* remove min-width when stacked */
+    min-width: 0;
   }
 }
 
 @media (max-width: 480px) {
-  .product-info { padding: 16px; }
-  .btn { padding: 10px 16px; font-size: 0.9rem; }
-  .btn-outline { padding: 8px 12px; font-size: 0.85rem; }
+  .btn {
+    font-size: 0.85rem;
+    padding: 8px 10px;
+  }
+  .btn-outline {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+  }
+}
+
+/* ---------- NO PRODUCTS ---------- */
+.no-products {
+  text-align: center;
+  padding: 60px 20px;
+  grid-column: 1 / -1;
+}
+
+.no-products-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.no-products h3 {
+  color: white;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.no-products p {
+  color: #bbdefb;
+  font-size: 16px;
+}
+
+/* ---------- GLOBAL SAFETY – NO HIDDEN OVERFLOW ---------- */
+body, #root, .main-content, .container {
+  overflow-x: visible !important;
 }
