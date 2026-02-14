@@ -13,15 +13,24 @@ const generateToken = (id, market = 'US', rememberMe = false) => {
 };
 
 // ------------------------------------------------------------------
-// Email Transporter (Gmail – replace with your SMTP in production)
+// Email Transporter – uses explicit SMTP settings from .env
 // ------------------------------------------------------------------
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
+  },
 });
+
+// Helper to get the 'from' address
+const getFromAddress = () => {
+  return process.env.EMAIL_FROM 
+    ? `"${process.env.EMAIL_FROM_NAME || 'UniDigital Marketplace'}" <${process.env.EMAIL_FROM}>`
+    : `"${process.env.EMAIL_FROM_NAME || 'UniDigital Marketplace'}" <${process.env.SMTP_USER}>`;
+};
 
 // ------------------------------------------------------------------
 // @desc    Register user with market preference
@@ -39,7 +48,6 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // ✅ Now accepting firstName and lastName separately
     const { 
       firstName,
       lastName,
@@ -57,7 +65,6 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // Validate that firstName and lastName are provided
     if (!firstName || !lastName) {
       return res.status(400).json({
         success: false,
@@ -87,17 +94,16 @@ const registerUser = async (req, res) => {
       }
     });
 
-    // Generate verification token
     const verificationToken = crypto.randomBytes(20).toString('hex');
     user.verificationToken = verificationToken;
     user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
     await user.save();
 
-    // Send verification email (optional – if email fails, user still created)
+    // Send verification email (non‑blocking)
     try {
       const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
       await transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: getFromAddress(),
         to: user.email,
         subject: 'Verify Your Email - UniDigital Marketplace',
         html: `
@@ -119,7 +125,7 @@ const registerUser = async (req, res) => {
       });
     } catch (emailError) {
       console.error('Verification email failed:', emailError);
-      // Continue – user still created
+      // User still created, continue
     }
 
     const token = generateToken(user._id, market);
@@ -149,7 +155,7 @@ const registerUser = async (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// @desc    Login user with market support
+// @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
 // ------------------------------------------------------------------
@@ -196,7 +202,7 @@ const loginUser = async (req, res) => {
       
       if (user.failedLoginAttempts >= 5) {
         user.isLocked = true;
-        user.lockUntil = Date.now() + 30 * 60 * 1000; // 30 minutes
+        user.lockUntil = Date.now() + 30 * 60 * 1000;
       }
       
       await user.save();
@@ -210,7 +216,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Reset failed attempts on success
     user.failedLoginAttempts = 0;
     user.isLocked = false;
     user.lockUntil = undefined;
@@ -319,7 +324,7 @@ const resendVerification = async (req, res) => {
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
     
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: getFromAddress(),
       to: user.email,
       subject: 'Verify Your Email - UniDigital Marketplace',
       html: `
@@ -368,13 +373,13 @@ const forgotPassword = async (req, res) => {
 
     const resetToken = crypto.randomBytes(20).toString('hex');
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: getFromAddress(),
       to: user.email,
       subject: 'Password Reset - UniDigital Marketplace',
       html: `
@@ -445,7 +450,7 @@ const resetPassword = async (req, res) => {
 };
 
 // ------------------------------------------------------------------
-// @desc    Get current user with full profile
+// @desc    Get current user profile
 // @route   GET /api/auth/me
 // @access  Private
 // ------------------------------------------------------------------
@@ -453,11 +458,7 @@ const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
       .populate('wishlist')
-      .populate({
-        path: 'cart.items.product',
-        model: 'Product',
-        select: 'name price image market'
-      })
+      .populate({ path: 'cart.items.product', model: 'Product', select: 'name price image market' })
       .populate('orders')
       .select('-password -resetPasswordToken -resetPasswordExpires -verificationToken -verificationExpires');
 
@@ -509,15 +510,7 @@ const getMe = async (req, res) => {
 // ------------------------------------------------------------------
 const updateProfile = async (req, res) => {
   try {
-    const { 
-      firstName, 
-      lastName, 
-      phone, 
-      address,
-      market,
-      preferences 
-    } = req.body;
-    
+    const { firstName, lastName, phone, address, market, preferences } = req.body;
     const userId = req.user.id;
 
     const updateData = {};
@@ -528,11 +521,7 @@ const updateProfile = async (req, res) => {
     if (market) updateData.market = market;
     if (preferences) updateData.preferences = { ...preferences };
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      updateData,
-      { new: true, runValidators: true }
-    ).select('-password');
+    const user = await User.findByIdAndUpdate(userId, updateData, { new: true, runValidators: true }).select('-password');
 
     if (!user) {
       return res.status(404).json({
@@ -607,22 +596,18 @@ const changePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    // Send password change notification (optional)
+    // Optional: send notification
     try {
       await transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: getFromAddress(),
         to: user.email,
         subject: 'Password Changed - UniDigital Marketplace',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
             <h2 style="color: #2563eb;">Password Changed Successfully</h2>
             <p>Hello <strong>${user.firstName}</strong>,</p>
-            <p>Your password was changed successfully on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}.</p>
+            <p>Your password was changed on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}.</p>
             <p style="color: #666;">If you didn't make this change, please contact support immediately.</p>
-            <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;">
-            <p style="color: #999; font-size: 12px; text-align: center;">
-              UniDigital Marketplace Security Team
-            </p>
           </div>
         `
       });
@@ -660,11 +645,7 @@ const uploadAvatar = async (req, res) => {
     const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
     const avatarUrl = `${baseUrl}/uploads/${req.file.filename}`;
 
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { avatar: avatarUrl },
-      { new: true }
-    ).select('-password');
+    const user = await User.findByIdAndUpdate(req.user.id, { avatar: avatarUrl }, { new: true }).select('-password');
 
     res.json({
       success: true,
@@ -731,10 +712,7 @@ const deleteAccount = async (req, res) => {
 // ------------------------------------------------------------------
 const logoutUser = async (req, res) => {
   try {
-    await User.findByIdAndUpdate(req.user.id, {
-      lastActive: new Date()
-    });
-
+    await User.findByIdAndUpdate(req.user.id, { lastActive: new Date() });
     res.json({
       success: true,
       message: 'Logged out successfully'
