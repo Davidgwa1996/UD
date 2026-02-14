@@ -57,10 +57,10 @@ const registerValidation = [
     .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('First name can only contain letters, spaces, hyphens, apostrophes, and periods'),
 
   body('lastName')
-    .optional()
+    .notEmpty().withMessage('Last name is required')            // ✅ required – matches controller
     .trim()
-    .isLength({ max: 50 }).withMessage('Last name cannot exceed 50 characters')
-    .matches(/^[a-zA-Z\s\-'.]*$/).withMessage('Last name can only contain letters, spaces, hyphens, apostrophes, and periods'),
+    .isLength({ min: 2, max: 50 }).withMessage('Last name must be between 2 and 50 characters')
+    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Last name can only contain letters, spaces, hyphens, apostrophes, and periods'),
 
   body('email')
     .isEmail().withMessage('Please include a valid email address')
@@ -205,38 +205,7 @@ router.post('/reset-password/:token', resetPasswordValidation, validate, resetPa
 router.post('/resend-verification', resendVerificationValidation, validate, resendVerification);
 router.get('/verify-email/:token', verifyEmail);
 
-// Demo account endpoint (optional)
-router.post('/demo-login', (req, res) => {
-  const demoAccount = {
-    token: 'demo_jwt_token_' + Date.now(),
-    user: {
-      id: 'demo_user_id',
-      name: 'Demo User',
-      email: 'test@example.com',
-      role: 'user',
-      isVerified: true,
-      market: 'US',
-      preferences: {
-        currency: 'USD',
-        language: 'en',
-        notifications: true
-      },
-      stats: {
-        totalOrders: 5,
-        totalSpent: 2500
-      }
-    }
-  };
-  res.json({
-    success: true,
-    message: 'Demo login successful',
-    token: demoAccount.token,
-    tokenExpiry: '90d',
-    user: demoAccount.user
-  });
-});
-
-// Password strength check endpoint
+// Password strength check endpoint (useful for frontend)
 router.post('/check-password-strength', [
   body('password').notEmpty().withMessage('Password is required')
 ], validate, (req, res) => {
@@ -251,13 +220,13 @@ router.post('/check-password-strength', [
   });
 });
 
-// Email validation endpoint
+// Email validation endpoint (check availability)
 router.post('/validate-email', [
   body('email').isEmail().withMessage('Please include a valid email address')
 ], validate, async (req, res) => {
   const { email } = req.body;
-  // Replace with actual DB check if needed
-  const emailExists = false;
+  // In production, query your database
+  const emailExists = false; // replace with actual DB check
   res.json({
     success: true,
     isValid: true,
@@ -266,7 +235,7 @@ router.post('/validate-email', [
   });
 });
 
-// Statistics endpoint
+// Statistics endpoint (for homepage)
 router.get('/stats', (req, res) => {
   res.json({
     success: true,
@@ -312,7 +281,7 @@ router.post('/contact', [
   });
 });
 
-// Get market-specific features
+// Market features endpoint
 router.get('/features', (req, res) => {
   const features = [
     { icon: '🤖', title: 'AI-Powered Pricing', description: 'Real-time market analysis for the best prices' },

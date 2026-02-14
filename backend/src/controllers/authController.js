@@ -39,8 +39,10 @@ const registerUser = async (req, res) => {
       });
     }
 
+    // ✅ Now accepting firstName and lastName separately
     const { 
-      name,              // Full name from frontend
+      firstName,
+      lastName,
       email, 
       password, 
       phone, 
@@ -55,10 +57,13 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // Split full name into first and last
-    const nameParts = name.trim().split(' ');
-    const firstName = nameParts[0];
-    const lastName = nameParts.slice(1).join(' ') || '';
+    // Validate that firstName and lastName are provided
+    if (!firstName || !lastName) {
+      return res.status(400).json({
+        success: false,
+        message: 'First name and last name are required'
+      });
+    }
 
     const userExists = await User.findOne({ email: email.toLowerCase() });
     if (userExists) {
@@ -69,8 +74,8 @@ const registerUser = async (req, res) => {
     }
 
     const user = await User.create({
-      firstName,
-      lastName,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       email: email.toLowerCase(),
       password,
       phone,
