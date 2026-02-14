@@ -87,16 +87,15 @@ const AuthPage = () => {
         setSuccess('Login successful! Redirecting...');
         setTimeout(() => navigate('/'), 1500);
       } else {
-        // Combine first and last name into a single 'name' field
-        const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-
+        // ✅ Send separate firstName and lastName as required by backend
         const response = await axios.post(`${API_BASE}/auth/register`, {
-          name: fullName,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           email: email.trim(),
           password,
           acceptTerms: 'true',      // must be string 'true'
-          market: 'US',
-          // phone is optional, omit if not needed
+          market: 'US',              // default market
+          // phone is optional – not sending unless you add a field
         });
 
         setSuccess('Registration successful! You can now login.');
