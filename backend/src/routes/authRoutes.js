@@ -3,7 +3,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 
 // ------------------------------------------------------------------
-// CONTROLLER IMPORTS (all functions exist in authController.js)
+// CONTROLLER IMPORTS
 // ------------------------------------------------------------------
 const {
   registerUser,
@@ -28,7 +28,7 @@ const { validate } = require('../middleware/validationMiddleware');
 const { multer } = require('../middleware/uploadMiddleware');
 
 // ------------------------------------------------------------------
-// HELPER FUNCTIONS (defined before use)
+// HELPER FUNCTIONS
 // ------------------------------------------------------------------
 const checkPasswordStrength = (password) => {
   if (password.length < 8) return 'weak';
@@ -50,17 +50,23 @@ const getPasswordSuggestions = (password) => {
 // VALIDATION RULES
 // ------------------------------------------------------------------
 const registerValidation = [
-  body('name')
-    .notEmpty().withMessage('Full name is required')
+  body('firstName')
+    .notEmpty().withMessage('First name is required')
     .trim()
-    .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters')
-    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Name can only contain letters, spaces, hyphens, apostrophes, and periods'),
-  
+    .isLength({ min: 2, max: 50 }).withMessage('First name must be between 2 and 50 characters')
+    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('First name can only contain letters, spaces, hyphens, apostrophes, and periods'),
+
+  body('lastName')
+    .optional()
+    .trim()
+    .isLength({ max: 50 }).withMessage('Last name cannot exceed 50 characters')
+    .matches(/^[a-zA-Z\s\-'.]*$/).withMessage('Last name can only contain letters, spaces, hyphens, apostrophes, and periods'),
+
   body('email')
     .isEmail().withMessage('Please include a valid email address')
     .normalizeEmail()
     .isLength({ max: 100 }).withMessage('Email must be less than 100 characters'),
-  
+
   body('password')
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number')
@@ -71,15 +77,7 @@ const registerValidation = [
       }
       return true;
     }),
-  
-  body('confirmPassword')
-    .custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error('Passwords do not match');
-      }
-      return true;
-    }),
-  
+
   body('acceptTerms')
     .equals('true').withMessage('You must accept the terms and conditions')
 ];
@@ -88,10 +86,10 @@ const loginValidation = [
   body('email')
     .isEmail().withMessage('Please include a valid email address')
     .normalizeEmail(),
-  
+
   body('password')
     .notEmpty().withMessage('Password is required'),
-  
+
   body('rememberMe')
     .optional()
     .isBoolean().withMessage('Remember me must be true or false')
@@ -123,37 +121,43 @@ const resendVerificationValidation = [
 ];
 
 const updateProfileValidation = [
-  body('name')
+  body('firstName')
     .optional()
     .trim()
-    .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters')
-    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Name can only contain letters, spaces, hyphens, apostrophes, and periods'),
-  
+    .isLength({ min: 2, max: 50 }).withMessage('First name must be between 2 and 50 characters')
+    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('First name can only contain letters, spaces, hyphens, apostrophes, and periods'),
+
+  body('lastName')
+    .optional()
+    .trim()
+    .isLength({ max: 50 }).withMessage('Last name cannot exceed 50 characters')
+    .matches(/^[a-zA-Z\s\-'.]*$/).withMessage('Last name can only contain letters, spaces, hyphens, apostrophes, and periods'),
+
   body('email')
     .optional()
     .isEmail().withMessage('Please include a valid email address')
     .normalizeEmail(),
-  
+
   body('phone')
     .optional()
     .isMobilePhone().withMessage('Please include a valid phone number')
     .trim(),
-  
+
   body('market')
     .optional()
     .isIn(['US', 'GB', 'CN', 'JP', 'EU', 'AU', 'CA', 'global'])
     .withMessage('Invalid market selection'),
-  
+
   body('preferences.currency')
     .optional()
     .isIn(['USD', 'GBP', 'EUR', 'JPY', 'CNY', 'CAD', 'AUD'])
     .withMessage('Invalid currency'),
-  
+
   body('preferences.language')
     .optional()
     .isIn(['en', 'es', 'fr', 'de', 'zh', 'ja'])
     .withMessage('Invalid language'),
-  
+
   body('preferences.notifications')
     .optional()
     .isBoolean().withMessage('Notifications must be true or false')
@@ -162,7 +166,7 @@ const updateProfileValidation = [
 const changePasswordValidation = [
   body('currentPassword')
     .notEmpty().withMessage('Current password is required'),
-  
+
   body('newPassword')
     .isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('New password must contain at least one uppercase letter, one lowercase letter, and one number')
@@ -176,7 +180,7 @@ const changePasswordValidation = [
       }
       return true;
     }),
-  
+
   body('confirmNewPassword')
     .custom((value, { req }) => {
       if (value !== req.body.newPassword) {
@@ -201,7 +205,7 @@ router.post('/reset-password/:token', resetPasswordValidation, validate, resetPa
 router.post('/resend-verification', resendVerificationValidation, validate, resendVerification);
 router.get('/verify-email/:token', verifyEmail);
 
-// Demo account endpoint (for testing)
+// Demo account endpoint (optional)
 router.post('/demo-login', (req, res) => {
   const demoAccount = {
     token: 'demo_jwt_token_' + Date.now(),
@@ -252,7 +256,8 @@ router.post('/validate-email', [
   body('email').isEmail().withMessage('Please include a valid email address')
 ], validate, async (req, res) => {
   const { email } = req.body;
-  const emailExists = false; // Replace with actual DB check if needed
+  // Replace with actual DB check if needed
+  const emailExists = false;
   res.json({
     success: true,
     isValid: true,
