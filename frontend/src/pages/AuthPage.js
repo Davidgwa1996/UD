@@ -429,14 +429,7 @@ const AuthPage = () => {
               </Link>
             </div>
 
-            {/* Demo Credentials */}
-            {isLogin && (
-              <div className="demo-credentials">
-                <p><strong>Demo Account:</strong></p>
-                <p>Email: test@example.com</p>
-                <p>Password: password123</p>
-              </div>
-            )}
+            {/* Demo Credentials – REMOVED as requested */}
           </div>
         </div>
       </main>
