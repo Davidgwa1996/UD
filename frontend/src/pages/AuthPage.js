@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';                 // ✅ direct axios import
+import axios from 'axios';
 import ModernFooter from '../components/ModernFooter';
 import './AuthPage.css';
 
@@ -91,14 +91,14 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
-        // ✅ LOGIN with axios
+        // LOGIN
         const response = await axios.post(`${API_BASE}/auth/login`, { email, password });
         localStorage.setItem('auth_token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         setSuccess('Login successful! Redirecting...');
         setTimeout(() => navigate('/'), 1500);
       } else {
-        // ✅ REGISTER – split full name
+        // REGISTER – split full name
         const nameParts = fullName.trim().split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
@@ -108,8 +108,8 @@ const AuthPage = () => {
           lastName,
           email: email.trim(),
           password,
-          acceptTerms: true,
-          market: 'US',
+          acceptTerms: 'true',  // ✅ backend expects string 'true', not boolean
+          market: 'US',          // default market
         });
 
         setSuccess('Registration successful! You can now login.');
@@ -123,7 +123,6 @@ const AuthPage = () => {
         setIsLogin(true);
       }
     } catch (err) {
-      // Extract error message from backend
       const message = err.response?.data?.message || err.message || 'An error occurred';
       setError(message);
     } finally {
@@ -178,7 +177,7 @@ const AuthPage = () => {
     <div className="auth-page">
       <main className="auth-content">
         <div className="auth-container">
-          {/* Left column – info (unchanged) */}
+          {/* Left column – info */}
           <div className="auth-info">
             <div className="auth-logo">
               <span>🌍</span>
@@ -243,7 +242,7 @@ const AuthPage = () => {
               <p>{isLogin ? 'Sign in to your account' : 'Join our global marketplace'}</p>
             </div>
 
-            {/* OAuth Buttons – now functional (redirect to backend) */}
+            {/* OAuth Buttons */}
             <div className="oauth-buttons">
               <button
                 type="button"
