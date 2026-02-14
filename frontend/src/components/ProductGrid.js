@@ -6,17 +6,10 @@ import './ProductGrid.css';
 
 const PLACEHOLDER_IMAGE = 'https://placehold.co/300x300/1e293b/94a3b8?text=No+Image';
 
-const ProductGrid = ({ products = [], columns = 4 }) => {
+const ProductGrid = ({ products = [] }) => {
   const { addToCart } = useCart();
 
-  // ---------- Helper: truncate long strings ----------
-  const truncateString = (str, maxLength = 22) => {
-    if (!str) return str;
-    return str.length > maxLength ? str.substring(0, maxLength) + '…' : str;
-  };
-
-  // ---------- No products fallback ----------
-  if (!products || !Array.isArray(products) || products.length === 0) {
+  if (!products || products.length === 0) {
     return (
       <div className="no-products">
         <div className="no-products-icon">📦</div>
@@ -26,194 +19,64 @@ const ProductGrid = ({ products = [], columns = 4 }) => {
     );
   }
 
-  // ---------- Grid columns ----------
-  const gridStyle = {
-    gridTemplateColumns: `repeat(${columns}, 1fr)`
-  };
-
-  // ---------- Price formatting ----------
   const formatPrice = (price, currency = 'GBP') => {
-    if (!price && price !== 0) return '£0.00';
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(price);
+    if (!price) return '£0.00';
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency, minimumFractionDigits: 0 }).format(price);
   };
 
-  // ---------- AI price change formatting ----------
-  const formatPriceChange = (change) => {
-    if (change === undefined || change === null) return null;
-    const isPositive = change > 0;
-    return {
-      symbol: isPositive ? '+' : '',
-      value: change,
-      formatted: `${isPositive ? '+' : ''}${change}%`,
-      class: isPositive ? 'up' : 'down'
-    };
-  };
-
-  // ---------- Non‑AI product badges ----------
-  const getProductBadge = (product) => {
-    if (!product) return null;
-    if (product.isNew) return { label: 'NEW', class: 'badge-new' };
-    if (product.isRefurbished) return { label: 'REFURBISHED', class: 'badge-refurbished' };
-    if (product.isAiPriced) return { label: 'AI-PRICED', class: 'badge-ai' };
-    if (product.discount > 0) return { label: `-${product.discount}%`, class: 'badge-discount' };
-    return null;
-  };
-
-  // ---------- Add to cart ----------
   const handleAddToCart = (product) => {
-    console.log('Adding product to cart:', product);
-    
-    const cartProduct = {
-      id: product.id || product._id || Math.random().toString(36).substr(2, 9),
-      name: product.name || 'Unnamed Product',
-      price: product.price || 0,
-      image: product.image || product.imageUrl || PLACEHOLDER_IMAGE,
-      category: product.category || 'Uncategorized',
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image || PLACEHOLDER_IMAGE,
       quantity: 1
-    };
-    
-    addToCart(cartProduct);
-    console.log(`${product.name || 'Product'} added to cart!`);
+    });
   };
 
   return (
-    <div className="product-grid" style={gridStyle}>
-      {products.map((product) => {
-        if (!product) return null;
-        
-        const badge = getProductBadge(product);
-        const priceChange = formatPriceChange(product.aiChange);
-        
-        // ---------- Only render AI badge if we have valid AI data ----------
-        const shouldShowAIBadge = product.isAiPriced && product.aiChange !== undefined && product.aiChange !== null;
-        
-        // ---------- Safe values with fallbacks ----------
-        const safeProduct = {
-          name: product.name || 'Unnamed Product',
-          category: product.category || 'Uncategorized',
-          rating: product.rating || 4.5,
-          reviews: product.reviews || 128,
-          description: product.description || 'No description available',
-          stock: product.stock ?? 29,
-          price: product.price ?? 0,
-          currency: product.currency || 'GBP',
-          originalPrice: product.originalPrice,
-          image: product.image || product.imageUrl || PLACEHOLDER_IMAGE,
-          aiLocation: truncateString(product.aiLocation || 'Liverpool', 22),
-          aiUpdated: product.aiUpdated || '3m ago',
-          aiChange: product.aiChange ?? -23.1
-        };
-
-        return (
-          <div key={product.id || product._id || Math.random()} className="product-card">
-            {/* ===== AI PRICE BADGE ===== */}
-            {shouldShowAIBadge && (
-              <AIPriceBadge 
-                changePercent={safeProduct.aiChange}
-                location={safeProduct.aiLocation}
-                updatedAt={safeProduct.aiUpdated}
-                trend={priceChange?.class || (safeProduct.aiChange > 0 ? 'up' : 'down')}
-              />
-            )}
-            
-            {/* ===== PRODUCT IMAGE ===== */}
-            <Link to={`/product/${product.id || product._id || '1'}`} className="product-image-link">
-              <div className="product-image">
-                <img 
-                  src={safeProduct.image} 
-                  alt={safeProduct.name} 
-                  onError={(e) => {
-                    e.target.src = PLACEHOLDER_IMAGE;
-                    e.target.onerror = null;
-                  }}
-                />
-                {badge && !shouldShowAIBadge && (
-                  <div className={`product-badge ${badge.class}`}>
-                    {badge.label}
-                  </div>
-                )}
-              </div>
-            </Link>
-
-            {/* ===== PRODUCT INFO ===== */}
-            <div className="product-info">
-              <Link 
-                to={`/product/${product.id || product._id || '1'}`} 
-                className="product-name"
-                title={safeProduct.name}
-              >
-                {safeProduct.name}
-              </Link>
-              
-              <div className="product-category">
-                {safeProduct.category}
-              </div>
-              
-              <div className="product-rating">
-                <span className="stars">⭐️⭐️⭐️⭐️⭐️</span>
-                <span className="rating-value">{safeProduct.rating.toFixed(1)}/5</span>
-                <span className="review-count">({safeProduct.reviews})</span>
-              </div>
-
-              <div className="product-description" title={safeProduct.description}>
-                {safeProduct.description}
-              </div>
-
-              {/* ===== STOCK INFO ===== */}
-              <div className="stock-info">
-                <span className="stock-label">Market stock:</span>
-                <span className="stock-value">{safeProduct.stock}</span>
-                {shouldShowAIBadge && (
-                  <span className="ai-updated-badge">AI updated</span>
-                )}
-              </div>
-
-              {/* ===== PRICE SECTION ===== */}
-              <div className="product-price-section">
-                <div className="price-main">
-                  <span className="current-price">
-                    {formatPrice(safeProduct.price, safeProduct.currency)}
-                  </span>
-                  {safeProduct.originalPrice && safeProduct.originalPrice > safeProduct.price && (
-                    <span className="original-price">
-                      {formatPrice(safeProduct.originalPrice, safeProduct.currency)}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* ===== ACTION BUTTONS – SIMPLIFIED LABELS ===== */}
-              <div className="product-actions">
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => handleAddToCart(product)}
-                  disabled={!product.stock || product.stock === 0}
-                >
-                  Buy Now
-                </button>
-                
-                <div className="secondary-actions">
-                  <Link to={`/market-analysis/${product.id}`} className="btn btn-outline">
-                    Market Analysis
-                  </Link>
-                  <button 
-                    className="btn btn-outline"
-                    onClick={() => handleAddToCart(product)}
-                    disabled={!product.stock || product.stock === 0}
-                  >
-                    🛒 Add to Cart
-                  </button>
-                </div>
-              </div>
+    <div className="product-grid-custom">
+      {products.map((product) => (
+        <div key={product.id} className="product-card-custom">
+          {/* Clickable image */}
+          <Link to={`/product/${product.id}`} className="product-image-link">
+            <div className="product-image-custom">
+              <img src={product.image || PLACEHOLDER_IMAGE} alt={product.name} />
             </div>
+          </Link>
+
+          {/* Clickable name */}
+          <Link to={`/product/${product.id}`} className="product-name-custom">
+            {product.name}
+          </Link>
+
+          <div className="product-category-custom">{product.category}</div>
+
+          <div className="product-rating-custom">
+            <span className="stars">⭐⭐⭐⭐⭐</span>
+            <span>{product.rating?.toFixed(1) || '4.5'}</span>
+            <span>({product.reviews || 0})</span>
           </div>
-        );
-      })}
+
+          <div className="product-price-stock-custom">
+            <span className="price-custom">{formatPrice(product.price)}</span>
+            <span className="stock-custom">S:{product.stock || 0}</span>
+          </div>
+
+          <div className="product-buttons-custom">
+            <Link to={`/market-analysis/${product.id}`} className="btn-custom">
+              Analysis
+            </Link>
+            <button
+              onClick={() => handleAddToCart(product)}
+              disabled={!product.stock}
+              className="btn-custom"
+            >
+              🛒 Add
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

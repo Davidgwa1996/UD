@@ -40,5 +40,7 @@ module.exports = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('tailwind-scrollbar'), // 👈 enables custom scrollbar styling (scrollbar-thin, scrollbar-thumb-blue-600, etc.)
+  ],
 }

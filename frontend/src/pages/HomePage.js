@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ProductGrid from '../components/ProductGrid';
+import CarouselRow from '../components/CarouselRow';
 import { api } from '../services/api';
 import { useCart } from '../context/CartContext';
 import './HomePage.css';
@@ -19,7 +20,7 @@ const HomePage = () => {
     lastUpdate: '23:08'
   });
 
-  // Global market products data with REAL IMAGES and AI PRICING (fallback)
+  // ---------- GLOBAL PRODUCTS (FALLBACK) – FULL ARRAY ----------
   const globalProducts = [
     // US Market Products
     { 
@@ -289,7 +290,29 @@ const HomePage = () => {
     }
   ];
 
-  // Market data update helpers
+  // Prepare items for carousels
+  const classicCars = globalProducts
+    .filter(p => p.category === "Electric Cars" || p.category === "Luxury Cars")
+    .map(p => ({
+      image: p.image,
+      title: p.name,
+      specs: p.description.split(',')[0] + (p.aiChange ? ` • ${p.aiChange > 0 ? '+' : ''}${p.aiChange}%` : ''),
+      link: `/product/${p.id}`
+    }));
+
+  const electronics = globalProducts
+    .filter(p => ["Laptops", "Smartphones", "PC Components", "Gaming", "VR/AR", "Electronics"].includes(p.category))
+    .map(p => ({
+      image: p.image,
+      title: p.name,
+      specs: p.description.split(',')[0] + (p.aiChange ? ` • ${p.aiChange > 0 ? '+' : ''}${p.aiChange}%` : ''),
+      link: `/product/${p.id}`
+    }));
+
+  // 🔥 Combine both into one array for a single carousel
+  const combinedItems = [...classicCars, ...electronics];
+
+  // Market data helpers
   const updateMarketTime = () => {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
@@ -304,7 +327,6 @@ const HomePage = () => {
       chinaIndex: (Math.random() * 0.5 - 0.25).toFixed(1),
       japanIndex: (Math.random() * 0.3 - 0.15).toFixed(1)
     };
-    
     setMarketData(prev => ({
       ...prev,
       usIndex: (parseFloat(prev.usIndex) + parseFloat(changes.usIndex)).toFixed(1) + '%',
@@ -314,59 +336,38 @@ const HomePage = () => {
     }));
   };
 
-  // 🚀 EFFECT – Show fallback products immediately, fetch real ones in background
+  // Load products
   useEffect(() => {
-    // Show fallback products INSTANTLY
     setFeaturedProducts(globalProducts);
     setLoading(false);
 
-    // Background fetch for real products (if available)
     const fetchRealProducts = async () => {
       try {
         const data = await api.getProducts({ featured: true, limit: 15 });
-        if (data?.products && data.products.length > 0) {
+        if (data?.products?.length) {
           setFeaturedProducts(data.products);
         }
       } catch (error) {
-        console.error('Background fetch failed – keeping fallback products');
+        console.error('Background fetch failed – keeping fallback');
       }
     };
-    
     fetchRealProducts();
 
-    // Market data updates
     updateMarketTime();
     const timeInterval = setInterval(updateMarketTime, 60000);
     const marketInterval = setInterval(simulateMarketUpdates, 15000);
-    
     return () => {
       clearInterval(timeInterval);
       clearInterval(marketInterval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleAddToCart = (product) => {
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      category: product.category,
-      market: product.market,
-      image: product.image,
-      description: product.description
-    });
-    navigate('/cart');
-  };
-
-  const handleQuickView = (productId) => {
-    navigate(`/product/${productId}`);
-  };
 
   if (loading) {
     return (
-      <Layout isHomePage={true}>
+      <Layout isHomePage>
         <div className="loading-screen">
-          <div className="loading-spinner"></div>
+          <div className="loading-spinner" />
           <p>Loading global marketplace...</p>
         </div>
       </Layout>
@@ -374,14 +375,16 @@ const HomePage = () => {
   }
 
   return (
-    <Layout isHomePage={true}>
-      {/* Hero Section */}
+    <Layout isHomePage>
       <div className="home-hero">
         <h1>Global Marketplace Products</h1>
         <p>AI-priced deals from US, UK, China, and Japan markets</p>
       </div>
-      
-      {/* Main Products Grid */}
+
+      {/* 🔥 Single full‑width carousel for both categories */}
+      <CarouselRow title="Classic Cars & Electronics" items={combinedItems} />
+
+      {/* Product Grid – fallback if featuredProducts empty */}
       <section className="products-section">
         <div className="section-header">
           <h2 className="section-title">Featured Global Products</h2>
@@ -389,99 +392,57 @@ const HomePage = () => {
             Curated selection from verified international sellers • AI-powered dynamic pricing
           </p>
         </div>
-        
-        <ProductGrid products={featuredProducts} columns={3} />
-        
+        <ProductGrid products={featuredProducts.length ? featuredProducts : globalProducts} />
         <div className="view-all-container">
-          <button 
-            onClick={() => navigate('/products')}
-            className="view-all-btn"
-          >
+          <button onClick={() => navigate('/products')} className="view-all-btn">
             View All Products →
           </button>
         </div>
       </section>
 
-      {/* Market Features */}
+      {/* Market Features (unchanged) */}
       <section className="market-features">
         <div className="section-header">
           <h2 className="section-title">Market Intelligence Features</h2>
-          <p className="section-subtitle">
-            Powered by AI for optimal pricing and insights
-          </p>
+          <p className="section-subtitle">Powered by AI for optimal pricing and insights</p>
         </div>
-        
         <div className="features-grid">
-          <div className="feature-card">
-            <div className="feature-icon">📈</div>
-            <h3 className="feature-title">Live Market Indicator</h3>
-            <p className="feature-description">
-              Real-time pricing trends across US, UK, China, Japan markets
-            </p>
-          </div>
-          
-          <div className="feature-card">
-            <div className="feature-icon">🤖</div>
-            <h3 className="feature-title">AI-Priced Classic Cars</h3>
-            <p className="feature-description">
-              Machine learning algorithms determine fair market value
-            </p>
-          </div>
-          
-          <div className="feature-card">
-            <div className="feature-icon">⚡</div>
-            <h3 className="feature-title">Real-Time Market Prices</h3>
-            <p className="feature-description">
-              Updated prices reflecting current market conditions
-            </p>
-          </div>
-          
-          <div className="feature-card">
-            <div className="feature-icon">🏷️</div>
-            <h3 className="feature-title">Featured Deals</h3>
-            <p className="feature-description">
-              Curated best-value products from global markets
-            </p>
-          </div>
+          {[
+            { icon: '📈', title: 'Live Market Indicator', desc: 'Real-time pricing trends across US, UK, China, Japan markets' },
+            { icon: '🤖', title: 'AI-Priced Classic Cars', desc: 'Machine learning algorithms determine fair market value' },
+            { icon: '⚡', title: 'Real-Time Market Prices', desc: 'Updated prices reflecting current market conditions' },
+            { icon: '🏷️', title: 'Featured Deals', desc: 'Curated best-value products from global markets' }
+          ].map((f, i) => (
+            <div key={i} className="feature-card">
+              <div className="feature-icon">{f.icon}</div>
+              <h3 className="feature-title">{f.title}</h3>
+              <p className="feature-description">{f.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Global Market Data */}
+      {/* Global Market Indices */}
       <section className="market-data-section">
         <div className="section-header">
           <h2 className="section-title">Global Market Indices</h2>
           <p className="update-time">Updated: {marketData.lastUpdate}</p>
         </div>
-        
         <div className="market-indices">
-          <div className="market-index">
-            <span className="market-flag">🇺🇸</span>
-            <span className="market-name">US Market</span>
-            <span className={`market-value ${marketData.usIndex.includes('+') ? 'positive' : 'negative'}`}>
-              {marketData.usIndex}
-            </span>
-          </div>
-          <div className="market-index">
-            <span className="market-flag">🇬🇧</span>
-            <span className="market-name">UK Market</span>
-            <span className={`market-value ${marketData.ukIndex.includes('+') ? 'positive' : 'negative'}`}>
-              {marketData.ukIndex}
-            </span>
-          </div>
-          <div className="market-index">
-            <span className="market-flag">🇨🇳</span>
-            <span className="market-name">China Market</span>
-            <span className={`market-value ${marketData.chinaIndex.includes('+') ? 'positive' : 'negative'}`}>
-              {marketData.chinaIndex}
-            </span>
-          </div>
-          <div className="market-index">
-            <span className="market-flag">🇯🇵</span>
-            <span className="market-name">Japan Market</span>
-            <span className={`market-value ${marketData.japanIndex.includes('+') ? 'positive' : 'negative'}`}>
-              {marketData.japanIndex}
-            </span>
-          </div>
+          {[
+            { flag: '🇺🇸', name: 'US Market', value: marketData.usIndex },
+            { flag: '🇬🇧', name: 'UK Market', value: marketData.ukIndex },
+            { flag: '🇨🇳', name: 'China Market', value: marketData.chinaIndex },
+            { flag: '🇯🇵', name: 'Japan Market', value: marketData.japanIndex }
+          ].map((m, i) => (
+            <div key={i} className="market-index">
+              <span className="market-flag">{m.flag}</span>
+              <span className="market-name">{m.name}</span>
+              <span className={`market-value ${m.value.includes('+') ? 'positive' : 'negative'}`}>
+                {m.value}
+              </span>
+            </div>
+          ))}
         </div>
       </section>
     </Layout>
