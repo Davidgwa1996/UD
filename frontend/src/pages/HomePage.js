@@ -290,13 +290,16 @@ const HomePage = () => {
     }
   ];
 
-  // Prepare items for carousels
+  // Prepare items for carousels – include AI fields for the badge
   const classicCars = globalProducts
     .filter(p => p.category === "Electric Cars" || p.category === "Luxury Cars")
     .map(p => ({
       image: p.image,
       title: p.name,
-      specs: p.description.split(',')[0] + (p.aiChange ? ` • ${p.aiChange > 0 ? '+' : ''}${p.aiChange}%` : ''),
+      specs: p.description.split(',')[0],  // short spec
+      aiChange: p.aiChange,
+      aiLocation: p.aiLocation,
+      aiUpdated: p.aiUpdated,
       link: `/product/${p.id}`
     }));
 
@@ -305,7 +308,10 @@ const HomePage = () => {
     .map(p => ({
       image: p.image,
       title: p.name,
-      specs: p.description.split(',')[0] + (p.aiChange ? ` • ${p.aiChange > 0 ? '+' : ''}${p.aiChange}%` : ''),
+      specs: p.description.split(',')[0],
+      aiChange: p.aiChange,
+      aiLocation: p.aiLocation,
+      aiUpdated: p.aiUpdated,
       link: `/product/${p.id}`
     }));
 
@@ -400,7 +406,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Market Features (unchanged) */}
+      {/* Market Features */}
       <section className="market-features">
         <div className="section-header">
           <h2 className="section-title">Market Intelligence Features</h2>

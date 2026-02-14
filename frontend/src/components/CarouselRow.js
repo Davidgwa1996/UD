@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import AIPriceBadge from './AIPriceBadge'; // ✅ import the badge
 
 const CarouselRow = ({ title, items }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -15,6 +17,9 @@ const CarouselRow = ({ title, items }) => {
   if (!items || items.length === 0) return null;
 
   const item = items[currentIndex];
+
+  // Determine trend for the badge based on aiChange
+  const trend = item.aiChange > 0 ? 'up' : item.aiChange < 0 ? 'down' : 'neutral';
 
   return (
     <div className="w-full mb-8">
@@ -63,7 +68,17 @@ const CarouselRow = ({ title, items }) => {
               {/* Details */}
               <div className="w-full md:w-1/2 text-center md:text-left">
                 <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">{item.title}</h3>
-                <p className="text-xl text-slate-300 leading-relaxed">{item.specs}</p>
+                <p className="text-xl text-slate-300 leading-relaxed mb-4">{item.specs}</p>
+
+                {/* ✅ AI Price Badge – shown if aiChange exists */}
+                {item.aiChange !== undefined && (
+                  <AIPriceBadge
+                    changePercent={item.aiChange}
+                    location={item.aiLocation || 'Unknown'}
+                    updatedAt={item.aiUpdated || '3m ago'}
+                    trend={trend}
+                  />
+                )}
               </div>
             </div>
           </Link>
