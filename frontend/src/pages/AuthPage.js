@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import ModernFooter from '../components/ModernFooter';
+import { api } from '../services/api';              // ✅ named import
 import './AuthPage.css';
 
 const AuthPage = () => {
@@ -34,42 +35,6 @@ const AuthPage = () => {
     if (!isLogin) {
       const strength = checkPasswordStrength(value);
       setPasswordStrength(strength);
-    }
-  };
-
-  // API Service - Mock implementation (replace with real API calls)
-  const api = {
-    login: async (email, password) => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (email === 'test@example.com' && password === 'password123') {
-        return {
-          token: 'mock_jwt_token_here',
-          user: {
-            id: 1,
-            name: 'Test User',
-            email: email,
-            role: 'user'
-          }
-        };
-      } else {
-        throw new Error('Invalid email or password');
-      }
-    },
-    
-    register: async (userData) => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (userData.email && userData.password) {
-        return {
-          success: true,
-          message: 'Registration successful'
-        };
-      } else {
-        throw new Error('Registration failed');
-      }
     }
   };
 
@@ -115,18 +80,18 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
-        // Login
+        // ✅ LOGIN using api.login
         const response = await api.login(email, password);
-        localStorage.setItem('auth_token', response.token);
+        // api.login already stores the token in localStorage
         localStorage.setItem('user', JSON.stringify(response.user));
         setSuccess('Login successful! Redirecting...');
         setTimeout(() => navigate('/'), 1500);
       } else {
-        // Register
-        const response = await api.register({ 
-          name: name.trim(), 
-          email: email.trim(), 
-          password 
+        // ✅ REGISTER using api.register
+        await api.register({
+          name: name.trim(),
+          email: email.trim(),
+          password,
         });
         setSuccess('Registration successful! You can now login.');
         // Clear form
@@ -137,15 +102,16 @@ const AuthPage = () => {
         setIsLogin(true);
       }
     } catch (err) {
-      setError(err.message || 'An error occurred. Please try again.');
+      // Error message is already user‑friendly from api methods
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
-    // Redirect to Google OAuth (implement based on your backend)
-    window.location.href = `${process.env.REACT_APP_API_URL}/api/auth/google`;
+    // Redirect to Google OAuth – make sure your backend supports this endpoint
+    window.location.href = `${process.env.REACT_APP_API_URL}/auth/google`;
   };
 
   const handleAppleLogin = () => {
@@ -428,8 +394,6 @@ const AuthPage = () => {
                 Need Help?
               </Link>
             </div>
-
-            {/* Demo Credentials – REMOVED as requested */}
           </div>
         </div>
       </main>
