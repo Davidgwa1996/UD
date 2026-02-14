@@ -192,3 +192,20 @@
 
 /* ===== AI BADGE – STYLES SHOULD BE IN AIPriceBadge.css ===== */
 /* This file only contains product grid layout; badge styling is separate */
+
+/* ===== EMERGENCY SCROLL OVERRIDES – DO NOT REMOVE ===== */
+/* Guarantee no hidden overflow on product grid elements */
+.product-grid-custom,
+.product-card-custom,
+.product-image-custom,
+.product-buttons-custom,
+.btn-custom {
+  overflow: visible !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+/* Keep image overflow hidden for proper cropping */
+.product-image-custom {
+  overflow: hidden !important;
+}

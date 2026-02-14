@@ -616,3 +616,47 @@ img {
     padding: 0 !important;
   }
 }
+
+/* ========== EMERGENCY SCROLL FIX – DO NOT REMOVE ========== */
+/* Forces proper vertical scrolling on all devices */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#root {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Target any common layout wrappers that may restrict height */
+.layout,
+.main-content,
+.container,
+[class*="layout"],
+[class*="main"],
+[class*="wrapper"] {
+  flex: 1 0 auto !important;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+/* Ensure no fixed heights on sections */
+section, div {
+  max-height: none !important;
+}
+
+/* Disable any overflow hidden on body children */
+body > * {
+  overflow-y: visible !important;
+}

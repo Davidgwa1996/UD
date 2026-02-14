@@ -438,6 +438,33 @@
   max-height: none;
 }
 
+/* ===== EMERGENCY OVERRIDES – FORCE SCROLLING ===== */
+.home-page,
+body, 
+#root {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh !important;
+}
+
+/* Ensure all sections are allowed to grow */
+.products-section,
+.market-features,
+.market-data-section,
+.price-fluctuation-section {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* Disable any hidden overflow on parent containers */
+html, body, #root, .App, .layout, .main-content {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh !important;
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .home-hero {

@@ -392,3 +392,32 @@ footer {
     padding: 0 15px;
   }
 }
+
+/* ===== EMERGENCY SCROLL OVERRIDES – DO NOT REMOVE ===== */
+/* Guarantee vertical scrolling on all containers */
+html, body, #root, .App, .layout, .main-content, .container {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh !important;
+}
+
+/* Ensure any fixed or absolutely positioned elements don't block scroll */
+.mobile-menu-overlay {
+  pointer-events: none;  /* allow clicks to pass through when not active */
+}
+
+/* Remove any max-height restrictions that could clip */
+section, div {
+  max-height: none !important;
+}
+
+/* Force all content to be visible */
+* {
+  overflow: visible !important;
+}
+
+/* But keep image overflow hidden for proper cropping */
+.product-image, .carousel-image {
+  overflow: hidden !important;
+}
