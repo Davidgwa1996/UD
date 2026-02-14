@@ -25,7 +25,7 @@ const {
 // ------------------------------------------------------------------
 const { protect } = require('../middleware/authMiddleware');
 const { validate } = require('../middleware/validationMiddleware');
-const { multer } = require('../middleware/uploadMiddleware'); // ✅ FIXED IMPORT
+const { multer } = require('../middleware/uploadMiddleware');
 
 // ------------------------------------------------------------------
 // HELPER FUNCTIONS (defined before use)
@@ -331,12 +331,31 @@ router.get('/health', (req, res) => {
 });
 
 // ------------------------------------------------------------------
+// OAUTH ROUTES (stubs – implement fully later)
+// ------------------------------------------------------------------
+router.get('/google', (req, res) => {
+  res.status(501).json({ success: false, message: 'Google OAuth not implemented yet' });
+});
+
+router.get('/google/callback', (req, res) => {
+  res.status(501).json({ success: false, message: 'Google OAuth callback not implemented' });
+});
+
+router.get('/apple', (req, res) => {
+  res.status(501).json({ success: false, message: 'Apple OAuth not implemented yet' });
+});
+
+router.get('/apple/callback', (req, res) => {
+  res.status(501).json({ success: false, message: 'Apple OAuth callback not implemented' });
+});
+
+// ------------------------------------------------------------------
 // PROTECTED ROUTES (require authentication)
 // ------------------------------------------------------------------
 router.get('/me', protect, getMe);
 router.put('/update-profile', protect, updateProfileValidation, validate, updateProfile);
 router.put('/change-password', protect, changePasswordValidation, validate, changePassword);
-router.post('/upload-avatar', protect, multer.single('avatar'), uploadAvatar); // ✅ FIXED UPLOAD MIDDLEWARE
+router.post('/upload-avatar', protect, multer.single('avatar'), uploadAvatar);
 router.post('/logout', protect, logoutUser);
 router.delete('/delete-account', protect, deleteAccountValidation, validate, deleteAccount);
 

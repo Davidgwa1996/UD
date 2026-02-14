@@ -40,8 +40,7 @@ const registerUser = async (req, res) => {
     }
 
     const { 
-      firstName, 
-      lastName, 
+      name,              // Full name from frontend
       email, 
       password, 
       phone, 
@@ -55,6 +54,11 @@ const registerUser = async (req, res) => {
         message: 'You must accept the terms and conditions'
       });
     }
+
+    // Split full name into first and last
+    const nameParts = name.trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(' ') || '';
 
     const userExists = await User.findOne({ email: email.toLowerCase() });
     if (userExists) {
@@ -84,30 +88,34 @@ const registerUser = async (req, res) => {
     user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
     await user.save();
 
-    // Send verification email
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-    
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: 'Verify Your Email - UniDigital Marketplace',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-          <h2 style="color: #2563eb;">Welcome to UniDigital Marketplace!</h2>
-          <p>Hello <strong>${firstName}</strong>,</p>
-          <p>Please verify your email address by clicking the button below:</p>
-          <a href="${verificationUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600;">
-            Verify Email
-          </a>
-          <p style="color: #666;">This link will expire in 24 hours.</p>
-          <p style="color: #666;">If you didn't create an account, you can ignore this email.</p>
-          <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px; text-align: center;">
-            UniDigital Marketplace – Global Tech & Automotive
-          </p>
-        </div>
-      `
-    });
+    // Send verification email (optional – if email fails, user still created)
+    try {
+      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: 'Verify Your Email - UniDigital Marketplace',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+            <h2 style="color: #2563eb;">Welcome to UniDigital Marketplace!</h2>
+            <p>Hello <strong>${firstName}</strong>,</p>
+            <p>Please verify your email address by clicking the button below:</p>
+            <a href="${verificationUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600;">
+              Verify Email
+            </a>
+            <p style="color: #666;">This link will expire in 24 hours.</p>
+            <p style="color: #666;">If you didn't create an account, you can ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              UniDigital Marketplace – Global Tech & Automotive
+            </p>
+          </div>
+        `
+      });
+    } catch (emailError) {
+      console.error('Verification email failed:', emailError);
+      // Continue – user still created
+    }
 
     const token = generateToken(user._id, market);
 
@@ -594,24 +602,28 @@ const changePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    // Send password change notification
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: 'Password Changed - UniDigital Marketplace',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-          <h2 style="color: #2563eb;">Password Changed Successfully</h2>
-          <p>Hello <strong>${user.firstName}</strong>,</p>
-          <p>Your password was changed successfully on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}.</p>
-          <p style="color: #666;">If you didn't make this change, please contact support immediately.</p>
-          <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px; text-align: center;">
-            UniDigital Marketplace Security Team
-          </p>
-        </div>
-      `
-    });
+    // Send password change notification (optional)
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: 'Password Changed - UniDigital Marketplace',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
+            <h2 style="color: #2563eb;">Password Changed Successfully</h2>
+            <p>Hello <strong>${user.firstName}</strong>,</p>
+            <p>Your password was changed successfully on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}.</p>
+            <p style="color: #666;">If you didn't make this change, please contact support immediately.</p>
+            <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center;">
+              UniDigital Marketplace Security Team
+            </p>
+          </div>
+        `
+      });
+    } catch (emailError) {
+      console.error('Password change email failed:', emailError);
+    }
 
     res.json({
       success: true,
@@ -640,7 +652,6 @@ const uploadAvatar = async (req, res) => {
       });
     }
 
-    // ✅ Store publicly accessible URL – works on Render & localhost
     const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
     const avatarUrl = `${baseUrl}/uploads/${req.file.filename}`;
 
