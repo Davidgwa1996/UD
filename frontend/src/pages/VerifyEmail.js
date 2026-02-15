@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+// Use environment variable or fallback to production URL
 const API_BASE = process.env.REACT_APP_API_URL || 'https://unidigitalcom-backend.onrender.com/api';
 
 const VerifyEmail = () => {
@@ -11,28 +12,37 @@ const VerifyEmail = () => {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    // If token is missing from URL, show error immediately
+    if (!token) {
+      setStatus('error');
+      setMessage('No verification token provided.');
+      return;
+    }
+
     const verifyEmail = async () => {
       try {
-        console.log('Verifying token:', token);
+        console.log('🔐 Verifying token:', token);
         const response = await axios.get(`${API_BASE}/auth/verify-email/${token}`);
-        console.log('Verification response:', response.data);
+        console.log('✅ Verification response:', response.data);
         setStatus('success');
-        setMessage(response.data.message);
+        setMessage(response.data.message || 'Email verified successfully!');
         // Redirect to login after 3 seconds
         setTimeout(() => navigate('/auth'), 3000);
       } catch (error) {
-        console.error('Verification error:', error);
+        console.error('❌ Verification error:', error);
         setStatus('error');
-        setMessage(error.response?.data?.message || 'Verification failed. The link may be invalid or expired.');
+        // Extract error message from backend response
+        const errorMsg = error.response?.data?.message || 
+                        error.message || 
+                        'Verification failed. The link may be invalid or expired.';
+        setMessage(errorMsg);
       }
     };
 
-    if (token) {
-      verifyEmail();
-    }
+    verifyEmail();
   }, [token, navigate]);
 
-  // Inline styles for simplicity (no CSS file needed)
+  // Inline styles (consistent with your app's dark theme)
   const containerStyle = {
     minHeight: '100vh',
     display: 'flex',
@@ -75,8 +85,10 @@ const VerifyEmail = () => {
     border: 'none',
     cursor: 'pointer',
     marginTop: '20px',
+    transition: 'background 0.2s',
   };
 
+  // Loading state
   if (status === 'verifying') {
     return (
       <div style={containerStyle}>
@@ -90,6 +102,7 @@ const VerifyEmail = () => {
     );
   }
 
+  // Success state
   if (status === 'success') {
     return (
       <div style={containerStyle}>
@@ -104,12 +117,19 @@ const VerifyEmail = () => {
     );
   }
 
+  // Error state
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
         <div style={{ fontSize: '64px', marginBottom: '20px', color: '#f87171' }}>❌</div>
         <h2 style={{ fontSize: '24px', color: '#f87171', marginBottom: '10px' }}>Verification Failed</h2>
         <p style={{ color: '#94a3b8', marginBottom: '20px' }}>{message}</p>
+        <p style={{ color: '#94a3b8', marginBottom: '10px' }}>
+          Need a new verification email?{' '}
+          <Link to="/auth?resend=true" style={{ color: '#3b82f6', textDecoration: 'underline' }}>
+            Resend
+          </Link>
+        </p>
         <Link to="/auth" style={buttonStyle}>Back to Login</Link>
       </div>
     </div>
