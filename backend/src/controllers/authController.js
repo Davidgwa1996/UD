@@ -2,7 +2,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 
 // ------------------------------------------------------------------
 // Generate JWT Token
@@ -13,23 +13,22 @@ const generateToken = (id, market = 'US', rememberMe = false) => {
 };
 
 // ------------------------------------------------------------------
-// Email Transporter – uses explicit SMTP settings from .env
+// SendGrid configuration
 // ------------------------------------------------------------------
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// Helper to get the 'from' address
-const getFromAddress = () => {
-  return process.env.EMAIL_FROM 
-    ? `"${process.env.EMAIL_FROM_NAME || 'UniDigital Marketplace'}" <${process.env.EMAIL_FROM}>`
-    : `"${process.env.EMAIL_FROM_NAME || 'UniDigital Marketplace'}" <${process.env.SMTP_USER}>`;
+// Helper to send emails using SendGrid
+const sendEmail = async ({ to, subject, html }) => {
+  const msg = {
+    to,
+    from: {
+      email: process.env.SENDGRID_FROM_EMAIL,
+      name: process.env.SENDGRID_FROM_NAME || 'UniDigital Marketplace',
+    },
+    subject,
+    html,
+  };
+  await sgMail.send(msg);
 };
 
 // ------------------------------------------------------------------
@@ -99,11 +98,10 @@ const registerUser = async (req, res) => {
     user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
     await user.save();
 
-    // Send verification email (non‑blocking)
+    // Send verification email using SendGrid
     try {
       const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-      await transporter.sendMail({
-        from: getFromAddress(),
+      await sendEmail({
         to: user.email,
         subject: 'Verify Your Email - UniDigital Marketplace',
         html: `
@@ -323,8 +321,7 @@ const resendVerification = async (req, res) => {
 
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
     
-    await transporter.sendMail({
-      from: getFromAddress(),
+    await sendEmail({
       to: user.email,
       subject: 'Verify Your Email - UniDigital Marketplace',
       html: `
@@ -378,8 +375,7 @@ const forgotPassword = async (req, res) => {
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
     
-    await transporter.sendMail({
-      from: getFromAddress(),
+    await sendEmail({
       to: user.email,
       subject: 'Password Reset - UniDigital Marketplace',
       html: `
@@ -596,10 +592,9 @@ const changePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    // Optional: send notification
+    // Optional: send notification using SendGrid
     try {
-      await transporter.sendMail({
-        from: getFromAddress(),
+      await sendEmail({
         to: user.email,
         subject: 'Password Changed - UniDigital Marketplace',
         html: `
