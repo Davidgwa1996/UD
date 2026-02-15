@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// ✅ Use environment variable – this will be your live backend URL in production
+const API_BASE = process.env.REACT_APP_API_URL || 'https://unidigitalcom-backend.onrender.com/api';
 
 const VerifyEmail = () => {
   const { token } = useParams();
@@ -48,17 +49,13 @@ const VerifyEmail = () => {
         console.error('❌ Verification error:', error);
         
         if (error.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
           console.error('Error response data:', error.response.data);
           console.error('Error response status:', error.response.status);
           setMessage(error.response.data?.message || 'Verification failed');
         } else if (error.request) {
-          // The request was made but no response was received
           console.error('No response received:', error.request);
           setMessage('Cannot connect to server. Please try again.');
         } else {
-          // Something happened in setting up the request that triggered an Error
           console.error('Error setting up request:', error.message);
           setMessage('An error occurred. Please try again.');
         }
@@ -70,7 +67,6 @@ const VerifyEmail = () => {
     verifyEmail();
   }, [token, navigate]);
 
-  // Styles (using Tailwind classes)
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
       <div className="bg-white/5 p-8 rounded-2xl border border-white/10 max-w-md w-full text-center shadow-2xl">
