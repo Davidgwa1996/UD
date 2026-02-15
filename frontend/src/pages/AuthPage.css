@@ -168,9 +168,14 @@
   transition: all 0.3s ease;
 }
 
-.oauth-btn:hover {
+.oauth-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
   transform: translateY(-2px);
+}
+
+.oauth-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .google-btn {
@@ -249,7 +254,8 @@
   font-weight: 500;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
   padding: 15px;
   border: 1px solid rgba(41, 121, 255, 0.3);
   border-radius: 10px;
@@ -257,6 +263,29 @@
   color: white;
   font-size: 15px;
   transition: all 0.3s ease;
+  width: 100%;
+}
+
+.form-group select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 20px;
+  padding-right: 48px;
+}
+
+.form-group select option {
+  background: #1a1a2e;
+  color: white;
+  padding: 12px;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #00e5ff;
+  box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1);
 }
 
 .form-group input:focus {
@@ -265,9 +294,54 @@
   box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1);
 }
 
-.form-group input:disabled {
+.form-group input:disabled,
+.form-group select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.form-group input.invalid,
+.form-group select.invalid {
+  border-color: #ff5252;
+}
+
+/* Error text */
+.error-text {
+  color: #ff5252;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Help text (for country detection) */
+.help-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Password strength indicator */
+.password-strength {
+  margin-top: 8px;
+}
+
+.strength-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.strength-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.strength-text {
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .forgot-password {
@@ -284,32 +358,41 @@
   text-decoration: underline;
 }
 
+/* Checkbox group */
 .checkbox-group {
   flex-direction: row;
   align-items: center;
   gap: 10px;
+  margin: 5px 0;
 }
 
 .checkbox-group input[type="checkbox"] {
   width: 18px;
   height: 18px;
   accent-color: #00e5ff;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .checkbox-group label {
   font-size: 13px;
   color: #bbdefb;
+  line-height: 1.4;
+  flex: 1;
 }
 
 .checkbox-group a {
   color: #00e5ff;
   text-decoration: none;
+  font-weight: 500;
 }
 
 .checkbox-group a:hover {
   text-decoration: underline;
 }
 
+/* Submit button */
 .auth-submit-btn {
   background: linear-gradient(135deg, #00e5ff, #2979ff);
   border: none;
@@ -323,6 +406,10 @@
   margin-top: 10px;
   position: relative;
   height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .auth-submit-btn:hover:not(:disabled) {
@@ -335,14 +422,25 @@
   cursor: not-allowed;
 }
 
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+/* Loading state */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.loading .spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   border-top-color: white;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Toggle */
@@ -364,7 +462,7 @@
   transition: color 0.3s ease;
 }
 
-.toggle-btn:hover {
+.toggle-btn:hover:not(:disabled) {
   color: #64ffda;
   text-decoration: underline;
 }
@@ -392,11 +490,6 @@
 
 .auth-links a:hover {
   color: #00e5ff;
-}
-
-/* Animations */
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* Responsive */
@@ -430,11 +523,140 @@
   
   .auth-stats {
     justify-content: center;
+    gap: 20px;
+  }
+  
+  .auth-stats strong {
+    font-size: 20px;
   }
   
   .auth-links {
     flex-direction: column;
     gap: 15px;
     align-items: center;
+  }
+  
+  .form-group select {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  .checkbox-group {
+    align-items: flex-start;
+  }
+  
+  .checkbox-group label {
+    font-size: 12px;
+  }
+}
+
+/* Small mobile screens */
+@media (max-width: 480px) {
+  .auth-info {
+    padding: 30px 20px;
+  }
+  
+  .auth-form-container {
+    padding: 30px 20px;
+  }
+  
+  .auth-info h1 {
+    font-size: 24px;
+  }
+  
+  .auth-form-header h2 {
+    font-size: 22px;
+  }
+  
+  .feature {
+    gap: 10px;
+  }
+  
+  .feature-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  .feature-content strong {
+    font-size: 14px;
+  }
+  
+  .feature-content p {
+    font-size: 12px;
+  }
+  
+  .auth-stats strong {
+    font-size: 18px;
+  }
+  
+  .auth-stats span {
+    font-size: 10px;
+  }
+  
+  .oauth-btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  .form-group input,
+  .form-group select {
+    padding: 12px;
+    font-size: 14px;
+  }
+  
+  .auth-submit-btn {
+    padding: 15px;
+    font-size: 15px;
+  }
+}
+
+/* Dark mode support (already dark, but ensures consistency) */
+@media (prefers-color-scheme: light) {
+  .auth-page {
+    background: linear-gradient(135deg, #f0f0fa 0%, #e6e6ff 100%);
+  }
+  
+  .auth-info h1 {
+    background: linear-gradient(135deg, #0066cc, #4d4dff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .auth-subtitle,
+  .feature-content p,
+  .auth-form-header p,
+  .divider span,
+  .auth-toggle,
+  .auth-links a {
+    color: #4a5568;
+  }
+  
+  .auth-stats span {
+    color: #4a5568;
+  }
+  
+  .auth-form-header h2,
+  .feature-content strong,
+  .auth-stats strong {
+    color: #1a202c;
+  }
+  
+  .form-group label,
+  .checkbox-group label {
+    color: #2d3748;
+  }
+  
+  .divider span {
+    background: #f0f0fa;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

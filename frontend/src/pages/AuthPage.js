@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ModernFooter from '../components/ModernFooter';
@@ -14,11 +14,50 @@ const AuthPage = () => {
   const [lastName, setLastName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [country, setCountry] = useState(''); // New state for country
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [passwordStrength, setPasswordStrength] = useState('');
   const navigate = useNavigate();
+
+  // Detect user's country on component mount
+  useEffect(() => {
+    const detectCountry = () => {
+      try {
+        // Try to detect from timezone
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        console.log('Detected timezone:', timezone);
+        
+        if (timezone.includes('Europe/London') || timezone.includes('GB') || timezone.includes('Dublin')) {
+          setCountry('GB');
+        } else if (timezone.includes('Europe/')) {
+          setCountry('EU');
+        } else if (timezone.includes('America/')) {
+          setCountry('US');
+        } else if (timezone.includes('Asia/Tokyo') || timezone.includes('Japan')) {
+          setCountry('JP');
+        } else if (timezone.includes('Asia/Shanghai') || timezone.includes('China')) {
+          setCountry('CN');
+        } else {
+          // Fallback to browser language
+          const lang = navigator.language || navigator.userLanguage;
+          if (lang.includes('en-GB')) {
+            setCountry('GB');
+          } else if (lang.includes('en-US')) {
+            setCountry('US');
+          } else {
+            setCountry('US'); // Default fallback
+          }
+        }
+      } catch (error) {
+        console.error('Country detection failed:', error);
+        setCountry('US'); // Default fallback
+      }
+    };
+
+    detectCountry();
+  }, []);
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -59,6 +98,11 @@ const AuthPage = () => {
         setLoading(false);
         return;
       }
+      if (!country) {
+        setError('Please select your country');
+        setLoading(false);
+        return;
+      }
       if (password !== confirmPassword) {
         setError('Passwords do not match');
         setLoading(false);
@@ -87,15 +131,15 @@ const AuthPage = () => {
         setSuccess('Login successful! Redirecting...');
         setTimeout(() => navigate('/'), 1500);
       } else {
-        // ✅ Send separate firstName and lastName as required by backend
+        // Send all required fields including country/market
         const response = await axios.post(`${API_BASE}/auth/register`, {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           email: email.trim(),
           password,
-          acceptTerms: 'true',      // must be string 'true'
-          market: 'US',              // default market
-          // phone is optional – not sending unless you add a field
+          acceptTerms: 'true',
+          market: country, // Send the selected/detected country
+          phone: '', // Optional, can be added later
         });
 
         setSuccess('Registration successful! You can now login.');
@@ -105,6 +149,7 @@ const AuthPage = () => {
         setPassword('');
         setConfirmPassword('');
         setAcceptTerms(false);
+        setCountry('');
         setPasswordStrength('');
         setIsLogin(true);
       }
@@ -144,7 +189,7 @@ const AuthPage = () => {
     <div className="auth-page">
       <main className="auth-content">
         <div className="auth-container">
-          {/* Left info column (unchanged) */}
+          {/* Left info column */}
           <div className="auth-info">
             <div className="auth-logo"><span>🌍</span><span>UD</span></div>
             <h1>Welcome to UniDigital</h1>
@@ -216,6 +261,35 @@ const AuthPage = () => {
                       required={!isLogin}
                       disabled={loading}
                     />
+                  </div>
+                  
+                  {/* ✅ NEW: Country Selection Dropdown */}
+                  <div className="form-group">
+                    <label htmlFor="country">Country *</label>
+                    <select
+                      id="country"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      required={!isLogin}
+                      disabled={loading}
+                      className="country-select"
+                    >
+                      <option value="">Select your country</option>
+                      <option value="GB">United Kingdom</option>
+                      <option value="US">United States</option>
+                      <option value="CA">Canada</option>
+                      <option value="AU">Australia</option>
+                      <option value="DE">Germany</option>
+                      <option value="FR">France</option>
+                      <option value="JP">Japan</option>
+                      <option value="CN">China</option>
+                      <option value="IN">India</option>
+                      <option value="BR">Brazil</option>
+                      <option value="ZA">South Africa</option>
+                      <option value="NG">Nigeria</option>
+                      <option value="KE">Kenya</option>
+                    </select>
+                    <small className="help-text">We detected your country as {country || 'not detected'}. You can change it above.</small>
                   </div>
                 </>
               )}
