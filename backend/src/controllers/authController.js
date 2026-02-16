@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const crypto = require('crypto');
 const sgMail = require('@sendgrid/mail');
+const { sendEmail, sendVerificationEmail, sendWelcomeEmail } = require('../utils/email'); // Updated email module
 
 // ------------------------------------------------------------------
 // Generate JWT Token
@@ -13,178 +14,39 @@ const generateToken = (id, rememberMe = false) => {
 };
 
 // ------------------------------------------------------------------
-// SendGrid configuration with validation and detailed logging
-// ------------------------------------------------------------------
-console.log('🔧 Initializing SendGrid...');
-console.log('SENDGRID_API_KEY exists:', !!process.env.SENDGRID_API_KEY);
-console.log('SENDGRID_FROM_EMAIL:', process.env.SENDGRID_FROM_EMAIL);
-console.log('SENDGRID_FROM_NAME:', process.env.SENDGRID_FROM_NAME);
-console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
-
-if (!process.env.SENDGRID_API_KEY) {
-  console.error('❌ SENDGRID_API_KEY is not set in environment variables');
-} else if (!process.env.SENDGRID_API_KEY.startsWith('SG.')) {
-  console.error('❌ SENDGRID_API_KEY must start with "SG."');
-} else {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  console.log('✅ SendGrid API key configured successfully');
-}
-
-// Helper to send emails using SendGrid with proper error handling and logging
-const sendEmail = async ({ to, subject, html }) => {
-  console.log(`📧 Preparing to send email to: ${to}`);
-  console.log(`📧 Subject: ${subject}`);
-  
-  // Validate required fields
-  if (!process.env.SENDGRID_FROM_EMAIL) {
-    console.error('❌ SENDGRID_FROM_EMAIL is not set');
-    throw new Error('SENDGRID_FROM_EMAIL is not set');
-  }
-  if (!process.env.SENDGRID_API_KEY) {
-    console.error('❌ SENDGRID_API_KEY is not set');
-    throw new Error('SENDGRID_API_KEY is not set');
-  }
-
-  const msg = {
-    to,
-    from: {
-      email: process.env.SENDGRID_FROM_EMAIL,
-      name: process.env.SENDGRID_FROM_NAME || 'UniDigital Marketplace',
-    },
-    subject,
-    html,
-  };
-  
-  console.log('📧 Message object:', JSON.stringify(msg, null, 2));
-  
-  try {
-    const result = await sgMail.send(msg);
-    console.log('✅ Email sent successfully to:', to);
-    console.log('📧 SendGrid response:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ SendGrid error details:');
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    if (error.response) {
-      console.error('SendGrid response body:', error.response.body);
-    }
-    if (error.code) {
-      console.error('Error code:', error.code);
-    }
-    throw error;
-  }
-};
-
-// ------------------------------------------------------------------
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
+// REGISTER USER
 // ------------------------------------------------------------------
 const registerUser = async (req, res) => {
   console.log('📝 Registration attempt started');
-  console.log('Request body:', { 
-    ...req.body, 
-    password: '[REDACTED]' 
-  });
-  
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log('❌ Validation errors:', errors.array());
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors: errors.array()
-      });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
-    const { 
-      firstName,
-      lastName,
-      email, 
-      password, 
-      phone, 
-      acceptTerms 
-    } = req.body;
+    const { firstName, lastName, email, password, phone, acceptTerms } = req.body;
 
-    if (!acceptTerms) {
-      console.log('❌ Terms not accepted');
-      return res.status(400).json({
-        success: false,
-        message: 'You must accept the terms and conditions'
-      });
-    }
+    if (!acceptTerms) return res.status(400).json({ success: false, message: 'You must accept the terms and conditions' });
 
-    if (!firstName || !lastName) {
-      console.log('❌ Missing first or last name');
-      return res.status(400).json({
-        success: false,
-        message: 'First name and last name are required'
-      });
-    }
-
-    console.log('🔍 Checking if user exists:', email);
     const userExists = await User.findOne({ email: email.toLowerCase() });
-    if (userExists) {
-      console.log('❌ User already exists:', email);
-      return res.status(400).json({
-        success: false,
-        message: 'Email already registered'
-      });
-    }
+    if (userExists) return res.status(400).json({ success: false, message: 'Email already registered' });
 
-    console.log('👤 Creating new user...');
     const user = await User.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.toLowerCase(),
       password,
       phone: phone || '',
-      accountStatus: 'active', // set default active
+      accountStatus: 'active',
     });
-    console.log('✅ User created with ID:', user._id);
 
     // Generate verification token
     const verificationToken = crypto.randomBytes(20).toString('hex');
     user.verificationToken = verificationToken;
-    user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24h
     user.isEmailVerified = false;
     await user.save();
-    console.log('🔑 Verification token generated and saved');
 
     // Send verification email
-    console.log('📧 Attempting to send verification email to:', user.email);
-    try {
-      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-      console.log('🔗 Verification URL:', verificationUrl);
-      
-      await sendEmail({
-        to: user.email,
-        subject: 'Verify Your Email - UniDigital Marketplace',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-            <h2 style="color: #2563eb;">Welcome to UniDigital Marketplace!</h2>
-            <p>Hello <strong>${firstName}</strong>,</p>
-            <p>Please verify your email address by clicking the button below:</p>
-            <a href="${verificationUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600;">
-              Verify Email
-            </a>
-            <p style="color: #666;">This link will expire in 24 hours.</p>
-            <p style="color: #666;">If you didn't create an account, you can ignore this email.</p>
-            <hr style="border: none; border-top: 1px solid #eaeaea; margin: 30px 0;">
-            <p style="color: #999; font-size: 12px; text-align: center;">
-              UniDigital Marketplace – Global Tech & Automotive
-            </p>
-          </div>
-        `
-      });
-      console.log('✅ Verification email sent successfully');
-    } catch (emailError) {
-      console.error('❌ Failed to send verification email:');
-      console.error('Error details:', emailError);
-      // Continue - user still created
-    }
+    await sendVerificationEmail(user, verificationToken);
 
     const token = generateToken(user._id);
 
@@ -203,78 +65,29 @@ const registerUser = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Registration error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Registration failed. Please try again.',
-      ...(process.env.NODE_ENV === 'development' && { error: error.message })
-    });
+    res.status(500).json({ success: false, message: 'Registration failed', error: error.message });
   }
 };
 
 // ------------------------------------------------------------------
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
+// LOGIN USER
 // ------------------------------------------------------------------
 const loginUser = async (req, res) => {
-  console.log('🔐 Login attempt for:', req.body.email);
-  
   try {
     const { email, password, rememberMe = false } = req.body;
-
-    if (!email || !password) {
-      console.log('❌ Missing email or password');
-      return res.status(400).json({
-        success: false,
-        message: 'Please enter email and password'
-      });
-    }
+    if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password required' });
 
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    console.log('🔍 User found:', !!user);
+    if (!user) return res.status(401).json({ success: false, message: 'Invalid email or password' });
 
-    if (!user) {
-      console.log('❌ User not found');
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
+    if (!user.isEmailVerified) return res.status(403).json({ success: false, message: 'Please verify your email before logging in' });
+    if (user.accountStatus !== 'active') return res.status(403).json({ success: false, message: 'Account not active. Contact support.' });
 
-    // Check if email is verified
-    if (!user.isEmailVerified) {
-      console.log('❌ Email not verified');
-      return res.status(403).json({
-        success: false,
-        message: 'Please verify your email before logging in',
-        requiresVerification: true
-      });
-    }
-
-    // Check account status
-    if (user.accountStatus !== 'active') {
-      console.log('❌ Account not active');
-      return res.status(403).json({
-        success: false,
-        message: 'Account is deactivated. Please contact support.'
-      });
-    }
-
-    const isPasswordMatch = await user.comparePassword(password);
-    console.log('🔑 Password match:', isPasswordMatch);
-
-    if (!isPasswordMatch) {
-      // Implement failed login attempts if needed (fields not in current model)
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid email or password' });
 
     user.lastLogin = new Date();
     await user.save();
-    console.log('✅ Login successful for:', user.email);
 
     const token = generateToken(user._id, rememberMe);
 
@@ -288,255 +101,124 @@ const loginUser = async (req, res) => {
         lastName: user.lastName,
         email: user.email,
         role: user.role,
-        isEmailVerified: user.isEmailVerified,
-        // Add any other fields you want to return (e.g., cart, wishlist)
+        isEmailVerified: user.isEmailVerified
       }
     });
   } catch (error) {
     console.error('❌ Login error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Login failed. Please try again.',
-      ...(process.env.NODE_ENV === 'development' && { error: error.message })
-    });
+    res.status(500).json({ success: false, message: 'Login failed', error: error.message });
   }
 };
 
 // ------------------------------------------------------------------
-// @desc    Verify email
-// @route   GET /api/auth/verify-email/:token
-// @access  Public
+// VERIFY EMAIL
 // ------------------------------------------------------------------
 const verifyEmail = async (req, res) => {
-  console.log('🔐 Email verification attempt for token:', req.params.token);
-  
   try {
     const { token } = req.params;
+    const user = await User.findOne({ verificationToken: token, verificationExpires: { $gt: Date.now() } });
 
-    const user = await User.findOne({
-      verificationToken: token,
-      verificationExpires: { $gt: Date.now() }
-    });
-    console.log('🔍 User found for verification:', !!user);
-
-    if (!user) {
-      console.log('❌ Invalid or expired token');
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired verification token'
-      });
-    }
+    if (!user) return res.status(400).json({ success: false, message: 'Invalid or expired token' });
 
     user.isEmailVerified = true;
     user.verificationToken = undefined;
     user.verificationExpires = undefined;
     await user.save();
-    console.log('✅ Email verified for user:', user.email);
 
-    res.json({
-      success: true,
-      message: 'Email verified successfully! You can now login.'
-    });
+    res.json({ success: true, message: 'Email verified successfully! You can now login.' });
   } catch (error) {
     console.error('❌ Verify email error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Email verification failed'
-    });
+    res.status(500).json({ success: false, message: 'Email verification failed', error: error.message });
   }
 };
 
 // ------------------------------------------------------------------
-// @desc    Resend verification email
-// @route   POST /api/auth/resend-verification
-// @access  Public
+// RESEND VERIFICATION EMAIL
 // ------------------------------------------------------------------
 const resendVerification = async (req, res) => {
-  console.log('📧 Resend verification attempt for:', req.body.email);
-  
   try {
     const { email } = req.body;
-
     const user = await User.findOne({ email: email.toLowerCase() });
-    console.log('🔍 User found:', !!user);
-
-    if (!user) {
-      console.log('❌ User not found');
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    if (user.isEmailVerified) {
-      console.log('✅ Email already verified');
-      return res.status(400).json({
-        success: false,
-        message: 'Email is already verified'
-      });
-    }
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (user.isEmailVerified) return res.status(400).json({ success: false, message: 'Email already verified' });
 
     const verificationToken = crypto.randomBytes(20).toString('hex');
     user.verificationToken = verificationToken;
     user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
     await user.save();
-    console.log('🔑 New verification token generated');
 
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
-    console.log('🔗 Verification URL:', verificationUrl);
-    
-    await sendEmail({
-      to: user.email,
-      subject: 'Verify Your Email - UniDigital Marketplace',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-          <h2 style="color: #2563eb;">Verify Your Email</h2>
-          <p>Hello <strong>${user.firstName}</strong>,</p>
-          <p>Click the button below to verify your email:</p>
-          <a href="${verificationUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600;">
-            Verify Email
-          </a>
-          <p style="color: #666;">This link will expire in 24 hours.</p>
-        </div>
-      `
-    });
-    console.log('✅ Verification email resent to:', user.email);
+    await sendVerificationEmail(user, verificationToken);
 
-    res.json({
-      success: true,
-      message: 'Verification email sent successfully'
-    });
+    res.json({ success: true, message: 'Verification email sent successfully' });
   } catch (error) {
     console.error('❌ Resend verification error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to resend verification email'
-    });
+    res.status(500).json({ success: false, message: 'Failed to resend verification email', error: error.message });
   }
 };
 
 // ------------------------------------------------------------------
-// @desc    Forgot password
-// @route   POST /api/auth/forgot-password
-// @access  Public
+// FORGOT PASSWORD
 // ------------------------------------------------------------------
 const forgotPassword = async (req, res) => {
-  console.log('🔐 Forgot password request for:', req.body.email);
-  
   try {
     const { email } = req.body;
-
     const user = await User.findOne({ email: email.toLowerCase() });
-    console.log('🔍 User found:', !!user);
+    if (!user) return res.status(404).json({ success: false, message: 'No account found with this email' });
 
-    if (!user) {
-      console.log('❌ User not found');
-      return res.status(404).json({
-        success: false,
-        message: 'No account found with this email'
-      });
-    }
-
-    // Generate password reset token (requires fields in model)
-    // Assuming you have resetPasswordToken and resetPasswordExpires fields
     const resetToken = crypto.randomBytes(20).toString('hex');
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
-    console.log('🔑 Password reset token generated');
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-    console.log('🔗 Reset URL:', resetUrl);
-    
     await sendEmail({
       to: user.email,
       subject: 'Password Reset - UniDigital Marketplace',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
-          <h2 style="color: #2563eb;">Reset Your Password</h2>
+        <div style="font-family: Arial, sans-serif; max-width:600px; margin:0 auto; padding:20px;">
+          <h2>Reset Your Password</h2>
           <p>Hello <strong>${user.firstName}</strong>,</p>
-          <p>You requested a password reset. Click the button below to reset your password:</p>
-          <a href="${resetUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: 600;">
-            Reset Password
-          </a>
-          <p style="color: #666;">This link will expire in 1 hour.</p>
-          <p style="color: #666;">If you didn't request this, please ignore this email.</p>
+          <p>Click below to reset your password:</p>
+          <a href="${resetUrl}" style="background:#2563eb; color:white; padding:12px 24px; text-decoration:none; border-radius:8px;">Reset Password</a>
+          <p>This link expires in 1 hour.</p>
         </div>
       `
     });
-    console.log('✅ Password reset email sent to:', user.email);
 
-    res.json({
-      success: true,
-      message: 'Password reset email sent'
-    });
+    res.json({ success: true, message: 'Password reset email sent' });
   } catch (error) {
     console.error('❌ Forgot password error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to process password reset'
-    });
+    res.status(500).json({ success: false, message: 'Failed to process password reset', error: error.message });
   }
 };
 
 // ------------------------------------------------------------------
-// @desc    Reset password
-// @route   POST /api/auth/reset-password/:token
-// @access  Public
+// RESET PASSWORD
 // ------------------------------------------------------------------
 const resetPassword = async (req, res) => {
-  console.log('🔐 Password reset attempt with token');
-  
   try {
     const { token } = req.params;
     const { password } = req.body;
 
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: Date.now() }
-    });
-    console.log('🔍 User found for reset:', !!user);
-
-    if (!user) {
-      console.log('❌ Invalid or expired reset token');
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired reset token'
-      });
-    }
+    const user = await User.findOne({ resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
+    if (!user) return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
 
     user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
-    console.log('✅ Password reset successful for:', user.email);
 
-    res.json({
-      success: true,
-      message: 'Password reset successful. You can now login with your new password.'
-    });
+    res.json({ success: true, message: 'Password reset successful. You can now login.' });
   } catch (error) {
     console.error('❌ Reset password error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to reset password'
-    });
+    res.status(500).json({ success: false, message: 'Failed to reset password', error: error.message });
   }
 };
 
 // ------------------------------------------------------------------
-// @desc    Get current user profile
-// @route   GET /api/auth/me
-// @access  Private
+// GET CURRENT USER PROFILE
 // ------------------------------------------------------------------
 const getMe = async (req, res) => {
-  console.log('👤 Fetching profile for user ID:', req.user.id);
-  
   try {
     const user = await User.findById(req.user.id)
       .populate('wishlist')
@@ -544,281 +226,65 @@ const getMe = async (req, res) => {
       .populate('orders')
       .select('-password -resetPasswordToken -resetPasswordExpires -verificationToken -verificationExpires');
 
-    if (!user) {
-      console.log('❌ User not found');
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    console.log('✅ Profile fetched for:', user.email);
-    res.json({
-      success: true,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        isEmailVerified: user.isEmailVerified,
-        accountStatus: user.accountStatus,
-        address: user.address,
-        cart: user.cart,
-        wishlist: user.wishlist,
-        orders: user.orders,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      }
-    });
+    res.json({ success: true, user });
   } catch (error) {
     console.error('❌ Get me error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch user profile'
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch user profile', error: error.message });
   }
 };
 
 // ------------------------------------------------------------------
-// @desc    Update user profile
-// @route   PUT /api/auth/update-profile
-// @access  Private
+// UPDATE PROFILE
 // ------------------------------------------------------------------
 const updateProfile = async (req, res) => {
-  console.log('👤 Updating profile for user ID:', req.user.id);
-  
   try {
     const { firstName, lastName, phone, address } = req.body;
-    const userId = req.user.id;
-
     const updateData = {};
     if (firstName) updateData.firstName = firstName;
     if (lastName) updateData.lastName = lastName;
     if (phone) updateData.phone = phone;
     if (address) updateData.address = address;
 
-    const user = await User.findByIdAndUpdate(userId, updateData, { new: true, runValidators: true }).select('-password');
+    const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true, runValidators: true }).select('-password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    if (!user) {
-      console.log('❌ User not found');
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    console.log('✅ Profile updated for:', user.email);
-    res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      user
-    });
+    res.json({ success: true, message: 'Profile updated successfully', user });
   } catch (error) {
     console.error('❌ Update profile error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update profile',
-      ...(process.env.NODE_ENV === 'development' && { error: error.message })
-    });
+    res.status(500).json({ success: false, message: 'Failed to update profile', error: error.message });
   }
 };
 
 // ------------------------------------------------------------------
-// @desc    Change password
-// @route   PUT /api/auth/change-password
-// @access  Private
+// CHANGE PASSWORD
 // ------------------------------------------------------------------
 const changePassword = async (req, res) => {
-  console.log('🔐 Password change attempt for user ID:', req.user.id);
-  
   try {
     const { currentPassword, newPassword } = req.body;
-    const userId = req.user.id;
+    if (!currentPassword || !newPassword) return res.status(400).json({ success: false, message: 'Please provide current and new password' });
+    if (currentPassword === newPassword) return res.status(400).json({ success: false, message: 'New password must differ' });
+    if (newPassword.length < 6) return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
 
-    if (!currentPassword || !newPassword) {
-      console.log('❌ Missing password fields');
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide current and new password'
-      });
-    }
-
-    if (currentPassword === newPassword) {
-      console.log('❌ New password same as current');
-      return res.status(400).json({
-        success: false,
-        message: 'New password must be different from current password'
-      });
-    }
-
-    if (newPassword.length < 6) {
-      console.log('❌ Password too short');
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters'
-      });
-    }
-
-    const user = await User.findById(userId).select('+password');
-    console.log('🔍 User found:', !!user);
-
-    if (!user) {
-      console.log('❌ User not found');
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+    const user = await User.findById(req.user.id).select('+password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     const isMatch = await user.comparePassword(currentPassword);
-    console.log('🔑 Current password match:', isMatch);
-    
-    if (!isMatch) {
-      console.log('❌ Current password incorrect');
-      return res.status(400).json({
-        success: false,
-        message: 'Current password is incorrect'
-      });
-    }
+    if (!isMatch) return res.status(400).json({ success: false, message: 'Current password incorrect' });
 
     user.password = newPassword;
     await user.save();
-    console.log('✅ Password changed for:', user.email);
 
-    res.json({
-      success: true,
-      message: 'Password changed successfully'
-    });
+    res.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {
     console.error('❌ Change password error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to change password'
-    });
+    res.status(500).json({ success: false, message: 'Failed to change password', error: error.message });
   }
 };
 
 // ------------------------------------------------------------------
-// @desc    Upload profile picture
-// @route   POST /api/auth/upload-avatar
-// @access  Private
-// ------------------------------------------------------------------
-const uploadAvatar = async (req, res) => {
-  console.log('🖼️ Avatar upload attempt for user ID:', req.user.id);
-  
-  try {
-    if (!req.file) {
-      console.log('❌ No file uploaded');
-      return res.status(400).json({
-        success: false,
-        message: 'Please upload an image'
-      });
-    }
-
-    console.log('📁 File received:', req.file.filename);
-    const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
-    const avatarUrl = `${baseUrl}/uploads/${req.file.filename}`;
-
-    // Add avatar field to User model if needed, or use a different storage
-    // For now, we'll just return success (you might want to store in user profile)
-    res.json({
-      success: true,
-      message: 'Profile picture uploaded',
-      avatar: avatarUrl
-    });
-  } catch (error) {
-    console.error('❌ Upload avatar error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to upload profile picture'
-    });
-  }
-};
-
-// ------------------------------------------------------------------
-// @desc    Delete account (soft delete)
-// @route   DELETE /api/auth/delete-account
-// @access  Private
-// ------------------------------------------------------------------
-const deleteAccount = async (req, res) => {
-  console.log('🗑️ Account deletion attempt for user ID:', req.user.id);
-  
-  try {
-    const { password } = req.body;
-    const userId = req.user.id;
-
-    const user = await User.findById(userId).select('+password');
-    console.log('🔍 User found:', !!user);
-
-    if (!user) {
-      console.log('❌ User not found');
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    const isMatch = await user.comparePassword(password);
-    console.log('🔑 Password match:', isMatch);
-    
-    if (!isMatch) {
-      console.log('❌ Password incorrect');
-      return res.status(400).json({
-        success: false,
-        message: 'Password is incorrect'
-      });
-    }
-
-    user.accountStatus = 'deactivated';
-    await user.save();
-    console.log('✅ Account deactivated for:', user.email);
-
-    res.json({
-      success: true,
-      message: 'Account deleted successfully'
-    });
-  } catch (error) {
-    console.error('❌ Delete account error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete account'
-    });
-  }
-};
-
-// ------------------------------------------------------------------
-// @desc    Logout user
-// @route   POST /api/auth/logout
-// @access  Private
-// ------------------------------------------------------------------
-const logoutUser = async (req, res) => {
-  console.log('🚪 Logout for user ID:', req.user.id);
-  
-  try {
-    // Optionally update lastActive or similar
-    res.json({
-      success: true,
-      message: 'Logged out successfully'
-    });
-  } catch (error) {
-    console.error('❌ Logout error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to logout'
-    });
-  }
-};
-
-// ------------------------------------------------------------------
-// ✅ EXPORT ALL CONTROLLER FUNCTIONS
+// EXPORT ALL CONTROLLERS
 // ------------------------------------------------------------------
 module.exports = {
   registerUser,
@@ -830,8 +296,5 @@ module.exports = {
   getMe,
   updateProfile,
   changePassword,
-  uploadAvatar,
-  deleteAccount,
-  logoutUser,
   generateToken
 };

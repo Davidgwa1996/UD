@@ -2,6 +2,9 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
+  // -------------------------------
+  // Basic user info
+  // -------------------------------
   firstName: {
     type: String,
     required: [true, 'First name is required'],
@@ -30,26 +33,43 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  address: {
-    street: String,
-    city: String,
-    state: String,
-    country: {
-      type: String,
-      default: 'USA'
-    },
-    zipCode: String
+  avatar: {
+    type: String, // URL of profile picture
+    default: null
   },
+  // -------------------------------
+  // Address
+  // -------------------------------
+  address: {
+    street: { type: String, trim: true },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    country: { type: String, default: 'USA' },
+    zipCode: { type: String, trim: true }
+  },
+  // -------------------------------
+  // Role & status
+  // -------------------------------
   role: {
     type: String,
     enum: ['customer', 'admin'],
     default: 'customer'
   },
+  accountStatus: {
+    type: String,
+    enum: ['active', 'suspended', 'deactivated'],
+    default: 'active'
+  },
+  lastLogin: {
+    type: Date
+  },
+  // -------------------------------
+  // Email verification
+  // -------------------------------
   isEmailVerified: {
     type: Boolean,
     default: false
   },
-  // ✅ New fields for email verification
   verificationToken: {
     type: String,
     default: null
@@ -58,6 +78,20 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // -------------------------------
+  // Password reset
+  // -------------------------------
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: null
+  },
+  // -------------------------------
+  // Relationships
+  // -------------------------------
   cart: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Cart'
@@ -69,23 +103,16 @@ const userSchema = new mongoose.Schema({
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
-  }],
-  lastLogin: {
-    type: Date
-  },
-  accountStatus: {
-    type: String,
-    enum: ['active', 'suspended', 'deactivated'],
-    default: 'active'
-  }
+  }]
 }, {
   timestamps: true
 });
 
+// -------------------------------
 // Hash password before saving
+// -------------------------------
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -95,16 +122,24 @@ userSchema.pre('save', async function(next) {
   }
 });
 
+// -------------------------------
 // Compare password method
+// -------------------------------
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// -------------------------------
 // Remove sensitive data when converting to JSON
+// -------------------------------
 userSchema.methods.toJSON = function() {
   const user = this.toObject();
   delete user.password;
   delete user.__v;
+  delete user.resetPasswordToken;
+  delete user.resetPasswordExpires;
+  delete user.verificationToken;
+  delete user.verificationExpires;
   return user;
 };
 
