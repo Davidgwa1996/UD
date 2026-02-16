@@ -25,7 +25,7 @@ const {
 // ------------------------------------------------------------------
 const { protect } = require('../middleware/authMiddleware');
 const { validate } = require('../middleware/validationMiddleware');
-const { multer } = require('../middleware/uploadMiddleware');
+const multer = require('../middleware/uploadMiddleware'); // Fixed destructuring
 
 // ------------------------------------------------------------------
 // HELPER FUNCTIONS
@@ -50,130 +50,62 @@ const getPasswordSuggestions = (password) => {
 // VALIDATION RULES
 // ------------------------------------------------------------------
 const registerValidation = [
-  body('firstName')
-    .notEmpty().withMessage('First name is required')
-    .trim()
-    .isLength({ min: 2, max: 50 }).withMessage('First name must be between 2 and 50 characters')
-    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('First name can only contain letters, spaces, hyphens, apostrophes, and periods'),
-
-  body('lastName')
-    .notEmpty().withMessage('Last name is required')
-    .trim()
-    .isLength({ min: 2, max: 50 }).withMessage('Last name must be between 2 and 50 characters')
-    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('Last name can only contain letters, spaces, hyphens, apostrophes, and periods'),
-
-  body('email')
-    .isEmail().withMessage('Please include a valid email address')
-    .normalizeEmail()
-    .isLength({ max: 100 }).withMessage('Email must be less than 100 characters'),
-
-  body('password')
-    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number')
-    .custom((value, { req }) => {
-      const strength = checkPasswordStrength(value);
-      if (strength === 'weak') {
-        throw new Error('Password is too weak. Use at least 8 characters with uppercase letters and numbers');
-      }
+  body('firstName').notEmpty().withMessage('First name is required').trim().isLength({ min: 2, max: 50 }),
+  body('lastName').notEmpty().withMessage('Last name is required').trim().isLength({ min: 2, max: 50 }),
+  body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    .custom((value) => {
+      if (checkPasswordStrength(value) === 'weak') throw new Error('Password too weak');
       return true;
     }),
-
-  body('acceptTerms')
-    .equals('true').withMessage('You must accept the terms and conditions')
+  body('acceptTerms').equals('true').withMessage('Terms must be accepted')
 ];
 
 const loginValidation = [
-  body('email')
-    .isEmail().withMessage('Please include a valid email address')
-    .normalizeEmail(),
-
-  body('password')
-    .notEmpty().withMessage('Password is required'),
-
-  body('rememberMe')
-    .optional()
-    .isBoolean().withMessage('Remember me must be true or false')
+  body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
+  body('password').notEmpty().withMessage('Password required'),
+  body('rememberMe').optional().isBoolean().withMessage('Remember me must be true/false')
 ];
 
 const forgotPasswordValidation = [
-  body('email')
-    .isEmail().withMessage('Please include a valid email address')
-    .normalizeEmail()
+  body('email').isEmail().withMessage('Valid email required').normalizeEmail()
 ];
 
 const resetPasswordValidation = [
-  body('password')
-    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number')
-    .custom((value, { req }) => {
-      const strength = checkPasswordStrength(value);
-      if (strength === 'weak') {
-        throw new Error('Password is too weak. Use at least 8 characters with uppercase letters and numbers');
-      }
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    .custom((value) => {
+      if (checkPasswordStrength(value) === 'weak') throw new Error('Password too weak');
       return true;
     })
 ];
 
 const resendVerificationValidation = [
-  body('email')
-    .isEmail().withMessage('Please include a valid email address')
-    .normalizeEmail()
+  body('email').isEmail().withMessage('Valid email required').normalizeEmail()
 ];
 
 const updateProfileValidation = [
-  body('firstName')
-    .optional()
-    .trim()
-    .isLength({ min: 2, max: 50 }).withMessage('First name must be between 2 and 50 characters')
-    .matches(/^[a-zA-Z\s\-'.]+$/).withMessage('First name can only contain letters, spaces, hyphens, apostrophes, and periods'),
-
-  body('lastName')
-    .optional()
-    .trim()
-    .isLength({ max: 50 }).withMessage('Last name cannot exceed 50 characters')
-    .matches(/^[a-zA-Z\s\-'.]*$/).withMessage('Last name can only contain letters, spaces, hyphens, apostrophes, and periods'),
-
-  body('email')
-    .optional()
-    .isEmail().withMessage('Please include a valid email address')
-    .normalizeEmail(),
-
-  body('phone')
-    .optional()
-    .isMobilePhone().withMessage('Please include a valid phone number')
-    .trim()
+  body('firstName').optional().trim().isLength({ min: 2, max: 50 }),
+  body('lastName').optional().trim().isLength({ min: 2, max: 50 }),
+  body('email').optional().isEmail().normalizeEmail(),
+  body('phone').optional().isMobilePhone()
 ];
 
 const changePasswordValidation = [
-  body('currentPassword')
-    .notEmpty().withMessage('Current password is required'),
-
-  body('newPassword')
-    .isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('New password must contain at least one uppercase letter, one lowercase letter, and one number')
+  body('currentPassword').notEmpty(),
+  body('newPassword').isLength({ min: 6 })
     .custom((value, { req }) => {
-      if (value === req.body.currentPassword) {
-        throw new Error('New password must be different from current password');
-      }
-      const strength = checkPasswordStrength(value);
-      if (strength === 'weak') {
-        throw new Error('Password is too weak. Use at least 8 characters with uppercase letters and numbers');
-      }
+      if (value === req.body.currentPassword) throw new Error('New password must differ');
+      if (checkPasswordStrength(value) === 'weak') throw new Error('Password too weak');
       return true;
     }),
-
-  body('confirmNewPassword')
-    .custom((value, { req }) => {
-      if (value !== req.body.newPassword) {
-        throw new Error('New passwords do not match');
-      }
-      return true;
-    })
+  body('confirmNewPassword').custom((value, { req }) => {
+    if (value !== req.body.newPassword) throw new Error('Passwords do not match');
+    return true;
+  })
 ];
 
 const deleteAccountValidation = [
-  body('password')
-    .notEmpty().withMessage('Password is required to delete your account')
+  body('password').notEmpty().withMessage('Password required to delete account')
 ];
 
 // ------------------------------------------------------------------
@@ -186,122 +118,14 @@ router.post('/reset-password/:token', resetPasswordValidation, validate, resetPa
 router.post('/resend-verification', resendVerificationValidation, validate, resendVerification);
 router.get('/verify-email/:token', verifyEmail);
 
-// Password strength check endpoint
+// Password strength check
 router.post('/check-password-strength', [
-  body('password').notEmpty().withMessage('Password is required')
+  body('password').notEmpty().withMessage('Password required')
 ], validate, (req, res) => {
   const { password } = req.body;
   const strength = checkPasswordStrength(password);
   const suggestions = getPasswordSuggestions(password);
-  res.json({
-    success: true,
-    strength,
-    score: strength === 'weak' ? 1 : strength === 'medium' ? 2 : 3,
-    suggestions
-  });
-});
-
-// Email availability check
-router.post('/validate-email', [
-  body('email').isEmail().withMessage('Please include a valid email address')
-], validate, async (req, res) => {
-  const { email } = req.body;
-  // Replace with actual database check
-  const emailExists = false;
-  res.json({
-    success: true,
-    isValid: true,
-    isAvailable: !emailExists,
-    message: emailExists ? 'Email is already registered' : 'Email is available'
-  });
-});
-
-// Statistics endpoint (for homepage)
-router.get('/stats', (req, res) => {
-  res.json({
-    success: true,
-    products: 50000,
-    accuracy: 98.7,
-    support: '24/7',
-    users: 150000,
-    countries: 150,
-    satisfaction: 96.5
-  });
-});
-
-// Terms and Privacy endpoints
-router.get('/terms', (req, res) => {
-  res.json({
-    success: true,
-    title: 'Terms of Service',
-    content: 'Terms of Service content here...',
-    lastUpdated: new Date().toISOString()
-  });
-});
-
-router.get('/privacy', (req, res) => {
-  res.json({
-    success: true,
-    title: 'Privacy Policy',
-    content: 'Privacy Policy content here...',
-    lastUpdated: new Date().toISOString()
-  });
-});
-
-// Contact/Help endpoint
-router.post('/contact', [
-  body('name').notEmpty().withMessage('Name is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('message').notEmpty().withMessage('Message is required')
-], validate, (req, res) => {
-  const { name, email, message } = req.body;
-  console.log('Contact form submission:', { name, email, message });
-  res.json({
-    success: true,
-    message: 'Thank you for your message. We will respond within 24 hours.'
-  });
-});
-
-// Market features endpoint
-router.get('/features', (req, res) => {
-  const features = [
-    { icon: '🤖', title: 'AI-Powered Pricing', description: 'Real-time market analysis for the best prices' },
-    { icon: '🌍', title: 'Global Marketplace', description: 'Shop from verified sellers worldwide' },
-    { icon: '🛡️', title: 'Secure Transactions', description: 'Protected payments and buyer guarantees' },
-    { icon: '🚚', title: 'Fast Shipping', description: 'International delivery with tracking' },
-    { icon: '💳', title: 'Multiple Payment Options', description: 'PayPal, Credit Cards, Apple Pay, and more' },
-    { icon: '📊', title: 'Market Insights', description: 'AI-driven analytics and price trends' }
-  ];
-  res.json({ success: true, features });
-});
-
-// Health check endpoint
-router.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0'
-  });
-});
-
-// ------------------------------------------------------------------
-// OAUTH ROUTES (stubs)
-// ------------------------------------------------------------------
-router.get('/google', (req, res) => {
-  res.status(501).json({ success: false, message: 'Google OAuth not implemented yet' });
-});
-
-router.get('/google/callback', (req, res) => {
-  res.status(501).json({ success: false, message: 'Google OAuth callback not implemented' });
-});
-
-router.get('/apple', (req, res) => {
-  res.status(501).json({ success: false, message: 'Apple OAuth not implemented yet' });
-});
-
-router.get('/apple/callback', (req, res) => {
-  res.status(501).json({ success: false, message: 'Apple OAuth callback not implemented' });
+  res.json({ success: true, strength, suggestions });
 });
 
 // ------------------------------------------------------------------

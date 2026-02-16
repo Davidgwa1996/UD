@@ -2,7 +2,6 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const crypto = require('crypto');
-const sgMail = require('@sendgrid/mail');
 const { sendEmail, sendVerificationEmail, sendWelcomeEmail } = require('../utils/email'); // Updated email module
 
 // ------------------------------------------------------------------
@@ -17,7 +16,6 @@ const generateToken = (id, rememberMe = false) => {
 // REGISTER USER
 // ------------------------------------------------------------------
 const registerUser = async (req, res) => {
-  console.log('📝 Registration attempt started');
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
@@ -41,12 +39,13 @@ const registerUser = async (req, res) => {
     // Generate verification token
     const verificationToken = crypto.randomBytes(20).toString('hex');
     user.verificationToken = verificationToken;
-    user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24h
+    user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
     user.isEmailVerified = false;
     await user.save();
 
     // Send verification email
     await sendVerificationEmail(user, verificationToken);
+    await sendWelcomeEmail(user); // Optional: send welcome email after registration
 
     const token = generateToken(user._id);
 
@@ -75,7 +74,6 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password, rememberMe = false } = req.body;
-    if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password required' });
 
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
     if (!user) return res.status(401).json({ success: false, message: 'Invalid email or password' });
@@ -144,7 +142,7 @@ const resendVerification = async (req, res) => {
 
     const verificationToken = crypto.randomBytes(20).toString('hex');
     user.verificationToken = verificationToken;
-    user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000;
+    user.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
     await user.save();
 
     await sendVerificationEmail(user, verificationToken);
@@ -221,9 +219,6 @@ const resetPassword = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .populate('wishlist')
-      .populate('cart')
-      .populate('orders')
       .select('-password -resetPasswordToken -resetPasswordExpires -verificationToken -verificationExpires');
 
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
@@ -265,7 +260,6 @@ const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return res.status(400).json({ success: false, message: 'Please provide current and new password' });
     if (currentPassword === newPassword) return res.status(400).json({ success: false, message: 'New password must differ' });
-    if (newPassword.length < 6) return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
 
     const user = await User.findById(req.user.id).select('+password');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
