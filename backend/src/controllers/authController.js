@@ -2,9 +2,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const { sendEmail, sendVerificationEmail, sendWelcomeEmail } = require('../utils/email'); 
+const { sendEmail, sendVerificationEmail, sendWelcomeEmail } = require('../utils/email');
 
 // ------------------------------------------------------------------
 // Generate JWT Token
@@ -15,80 +13,98 @@ const generateToken = (id, rememberMe = false) => {
 };
 
 // ------------------------------------------------------------------
-// REGISTER, LOGIN, VERIFY, PASSWORD CONTROLLERS
+// REGISTER USER
 // ------------------------------------------------------------------
-// ... (your existing registerUser, loginUser, verifyEmail, resendVerification, forgotPassword, resetPassword, getMe, updateProfile, changePassword)
-// (keep exactly as in your previous code)
+const registerUser = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+
+    const { firstName, lastName, email, password, phone, acceptTerms } = req.body;
+
+    if (!acceptTerms) return res.status(400).json({ success: false, message: 'You must accept the terms and conditions' });
+
+    const userExists = await User.findOne({ email: email.toLowerCase() });
+    if (userExists) return res.status(400).json({ success: false, message: 'Email already registered' });
+
+    const user = await User.create({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.toLowerCase(),
+      password,
+      phone: phone || '',
+      accountStatus: 'active'
+    });
+
+    const verificationToken = user.generateVerificationToken();
+    await user.save();
+
+    await sendVerificationEmail(user, verificationToken);
+    await sendWelcomeEmail(user);
+
+    const token = generateToken(user._id);
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful! Please check your email to verify your account.',
+      token,
+      user
+    });
+  } catch (error) {
+    console.error('❌ Registration error:', error);
+    res.status(500).json({ success: false, message: 'Registration failed', error: error.message });
+  }
+};
+
+// ------------------------------------------------------------------
+// LOGIN USER
+// ------------------------------------------------------------------
+const loginUser = async (req, res) => {
+  try {
+    const { email, password, rememberMe = false } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+
+    if (!user) return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    if (!user.isEmailVerified) return res.status(403).json({ success: false, message: 'Please verify your email before logging in' });
+    if (user.accountStatus !== 'active') return res.status(403).json({ success: false, message: 'Account not active. Contact support.' });
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid email or password' });
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = generateToken(user._id, rememberMe);
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user
+    });
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({ success: false, message: 'Login failed', error: error.message });
+  }
+};
 
 // ------------------------------------------------------------------
 // UPLOAD AVATAR
 // ------------------------------------------------------------------
 const uploadAvatar = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    // Delete old avatar if exists
-    if (user.avatar) {
-      const oldAvatarPath = path.join(__dirname, '../../', user.avatar);
-      if (fs.existsSync(oldAvatarPath)) {
-        fs.unlink(oldAvatarPath, (err) => {
-          if (err) console.error('❌ Failed to delete old avatar:', err);
-        });
-      }
-    }
-
-    // Save new avatar path
-    user.avatar = `uploads/${req.file.filename}`;
+    user.avatar = `/uploads/${req.file.filename}`;
     await user.save();
 
-    res.json({
-      success: true,
-      message: 'Avatar uploaded successfully',
-      avatar: user.avatar
-    });
+    res.json({ success: true, message: 'Avatar uploaded successfully', avatar: user.avatar });
   } catch (error) {
     console.error('❌ Upload avatar error:', error);
     res.status(500).json({ success: false, message: 'Failed to upload avatar', error: error.message });
-  }
-};
-
-// ------------------------------------------------------------------
-// LOGOUT & DELETE ACCOUNT
-// ------------------------------------------------------------------
-const logoutUser = async (req, res) => {
-  try {
-    res.json({ success: true, message: 'Logged out successfully' });
-  } catch (error) {
-    console.error('❌ Logout error:', error);
-    res.status(500).json({ success: false, message: 'Logout failed', error: error.message });
-  }
-};
-
-const deleteAccount = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('+password');
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    const { password } = req.body;
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) return res.status(400).json({ success: false, message: 'Password incorrect' });
-
-    // Delete avatar file if exists
-    if (user.avatar) {
-      const avatarPath = path.join(__dirname, '../../', user.avatar);
-      if (fs.existsSync(avatarPath)) fs.unlinkSync(avatarPath);
-    }
-
-    await User.findByIdAndDelete(req.user.id);
-    res.json({ success: true, message: 'Account deleted successfully' });
-  } catch (error) {
-    console.error('❌ Delete account error:', error);
-    res.status(500).json({ success: false, message: 'Failed to delete account', error: error.message });
   }
 };
 
@@ -98,15 +114,6 @@ const deleteAccount = async (req, res) => {
 module.exports = {
   registerUser,
   loginUser,
-  verifyEmail,
-  resendVerification,
-  forgotPassword,
-  resetPassword,
-  getMe,
-  updateProfile,
-  changePassword,
-  uploadAvatar,       // ✅ Added
-  deleteAccount,
-  logoutUser,
+  uploadAvatar,
   generateToken
 };
