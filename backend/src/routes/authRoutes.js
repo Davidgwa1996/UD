@@ -5,6 +5,8 @@ const router = express.Router();
 // ------------------------------------------------------------------
 // CONTROLLER IMPORTS
 // ------------------------------------------------------------------
+const authController = require('../controllers/authController');
+
 const {
   registerUser,
   loginUser,
@@ -18,124 +20,131 @@ const {
   uploadAvatar,
   deleteAccount,
   logoutUser
-} = require('../controllers/authController');
+} = authController;
 
 // ------------------------------------------------------------------
 // MIDDLEWARE IMPORTS
 // ------------------------------------------------------------------
 const { protect } = require('../middleware/authMiddleware');
 const { validate } = require('../middleware/validationMiddleware');
-const multer = require('../middleware/uploadMiddleware'); // Fixed destructuring
+const upload = require('../middleware/uploadMiddleware'); // multer instance
 
 // ------------------------------------------------------------------
-// HELPER FUNCTIONS
+// SAFETY CHECK (prevents Route.post undefined crash)
 // ------------------------------------------------------------------
-const checkPasswordStrength = (password) => {
-  if (password.length < 8) return 'weak';
-  if (password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password)) return 'strong';
-  return 'medium';
+const ensure = (fn, name) => {
+  if (typeof fn !== 'function') {
+    throw new Error(`❌ Controller "${name}" is not defined or not exported`);
+  }
+  return fn;
 };
 
-const getPasswordSuggestions = (password) => {
-  const suggestions = [];
-  if (password.length < 8) suggestions.push('Use at least 8 characters');
-  if (!/[A-Z]/.test(password)) suggestions.push('Add at least one uppercase letter');
-  if (!/[a-z]/.test(password)) suggestions.push('Add at least one lowercase letter');
-  if (!/[0-9]/.test(password)) suggestions.push('Add at least one number');
-  if (!/[@$!%*?&]/.test(password)) suggestions.push('Add at least one special character (@$!%*?&)');
-  return suggestions;
+// ------------------------------------------------------------------
+// PASSWORD HELPERS
+// ------------------------------------------------------------------
+const checkPasswordStrength = (password) => {
+  if (!password || password.length < 8) return 'weak';
+  if (/[A-Z]/.test(password) && /[0-9]/.test(password)) return 'strong';
+  return 'medium';
 };
 
 // ------------------------------------------------------------------
 // VALIDATION RULES
 // ------------------------------------------------------------------
 const registerValidation = [
-  body('firstName').notEmpty().withMessage('First name is required').trim().isLength({ min: 2, max: 50 }),
-  body('lastName').notEmpty().withMessage('Last name is required').trim().isLength({ min: 2, max: 50 }),
-  body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  body('firstName').notEmpty().isLength({ min: 2, max: 50 }),
+  body('lastName').notEmpty().isLength({ min: 2, max: 50 }),
+  body('email').isEmail().normalizeEmail(),
+  body('password')
+    .isLength({ min: 6 })
     .custom((value) => {
-      if (checkPasswordStrength(value) === 'weak') throw new Error('Password too weak');
+      if (checkPasswordStrength(value) === 'weak') {
+        throw new Error('Password too weak');
+      }
       return true;
     }),
-  body('acceptTerms').equals('true').withMessage('Terms must be accepted')
+  body('acceptTerms').equals('true')
 ];
 
 const loginValidation = [
-  body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
-  body('password').notEmpty().withMessage('Password required'),
-  body('rememberMe').optional().isBoolean().withMessage('Remember me must be true/false')
+  body('email').isEmail().normalizeEmail(),
+  body('password').notEmpty()
 ];
 
 const forgotPasswordValidation = [
-  body('email').isEmail().withMessage('Valid email required').normalizeEmail()
+  body('email').isEmail().normalizeEmail()
 ];
 
 const resetPasswordValidation = [
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-    .custom((value) => {
-      if (checkPasswordStrength(value) === 'weak') throw new Error('Password too weak');
-      return true;
-    })
-];
-
-const resendVerificationValidation = [
-  body('email').isEmail().withMessage('Valid email required').normalizeEmail()
-];
-
-const updateProfileValidation = [
-  body('firstName').optional().trim().isLength({ min: 2, max: 50 }),
-  body('lastName').optional().trim().isLength({ min: 2, max: 50 }),
-  body('email').optional().isEmail().normalizeEmail(),
-  body('phone').optional().isMobilePhone()
+  body('password').isLength({ min: 6 })
 ];
 
 const changePasswordValidation = [
   body('currentPassword').notEmpty(),
-  body('newPassword').isLength({ min: 6 })
-    .custom((value, { req }) => {
-      if (value === req.body.currentPassword) throw new Error('New password must differ');
-      if (checkPasswordStrength(value) === 'weak') throw new Error('Password too weak');
-      return true;
-    }),
+  body('newPassword').isLength({ min: 6 }),
   body('confirmNewPassword').custom((value, { req }) => {
-    if (value !== req.body.newPassword) throw new Error('Passwords do not match');
+    if (value !== req.body.newPassword) {
+      throw new Error('Passwords do not match');
+    }
     return true;
   })
 ];
 
 const deleteAccountValidation = [
-  body('password').notEmpty().withMessage('Password required to delete account')
+  body('password').notEmpty()
 ];
 
 // ------------------------------------------------------------------
 // PUBLIC ROUTES
 // ------------------------------------------------------------------
-router.post('/register', registerValidation, validate, registerUser);
-router.post('/login', loginValidation, validate, loginUser);
-router.post('/forgot-password', forgotPasswordValidation, validate, forgotPassword);
-router.post('/reset-password/:token', resetPasswordValidation, validate, resetPassword);
-router.post('/resend-verification', resendVerificationValidation, validate, resendVerification);
-router.get('/verify-email/:token', verifyEmail);
+router.post('/register', registerValidation, validate, ensure(registerUser,'registerUser'));
+router.post('/login', loginValidation, validate, ensure(loginUser,'loginUser'));
+router.post('/forgot-password', forgotPasswordValidation, validate, ensure(forgotPassword,'forgotPassword'));
+router.post('/reset-password/:token', resetPasswordValidation, validate, ensure(resetPassword,'resetPassword'));
+router.post('/resend-verification', validate, ensure(resendVerification,'resendVerification'));
+router.get('/verify-email/:token', ensure(verifyEmail,'verifyEmail'));
 
-// Password strength check
-router.post('/check-password-strength', [
-  body('password').notEmpty().withMessage('Password required')
-], validate, (req, res) => {
-  const { password } = req.body;
-  const strength = checkPasswordStrength(password);
-  const suggestions = getPasswordSuggestions(password);
-  res.json({ success: true, strength, suggestions });
-});
+// password strength tester
+router.post('/check-password-strength',
+  body('password').notEmpty(),
+  validate,
+  (req, res) => {
+    const strength = checkPasswordStrength(req.body.password);
+    res.json({ success: true, strength });
+  }
+);
 
 // ------------------------------------------------------------------
 // PROTECTED ROUTES
 // ------------------------------------------------------------------
-router.get('/me', protect, getMe);
-router.put('/update-profile', protect, updateProfileValidation, validate, updateProfile);
-router.put('/change-password', protect, changePasswordValidation, validate, changePassword);
-router.post('/upload-avatar', protect, multer.single('avatar'), uploadAvatar);
-router.post('/logout', protect, logoutUser);
-router.delete('/delete-account', protect, deleteAccountValidation, validate, deleteAccount);
+router.get('/me', protect, ensure(getMe,'getMe'));
+
+router.put('/update-profile',
+  protect,
+  validate,
+  ensure(updateProfile,'updateProfile')
+);
+
+router.put('/change-password',
+  protect,
+  changePasswordValidation,
+  validate,
+  ensure(changePassword,'changePassword')
+);
+
+router.post('/upload-avatar',
+  protect,
+  upload.single('avatar'),
+  ensure(uploadAvatar,'uploadAvatar')
+);
+
+router.post('/logout', protect, ensure(logoutUser,'logoutUser'));
+
+router.delete('/delete-account',
+  protect,
+  deleteAccountValidation,
+  validate,
+  ensure(deleteAccount,'deleteAccount')
+);
 
 module.exports = router;
