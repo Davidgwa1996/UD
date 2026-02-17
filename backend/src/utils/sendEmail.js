@@ -1,24 +1,23 @@
 const nodemailer = require('nodemailer');
 
 /**
- * Create transporter
- * Uses SMTP for production and Ethereal for development
+ * Create transporter using SendGrid SMTP
  */
 const createTransporter = async () => {
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    console.log('🔧 Using production SMTP server');
+    console.log('🔧 Using production SMTP server (SendGrid)');
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT || 587,
-      secure: process.env.SMTP_PORT == 465, // true for 465, false for other ports
+      secure: process.env.SMTP_PORT == 465, // true for 465, false for others
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+        user: process.env.SMTP_USER, // 'apikey'
+        pass: process.env.SMTP_PASS  // SendGrid API key
       }
     });
   }
 
-  // Development: ethereal.email
+  // Development: Ethereal (preview emails)
   console.log('🔧 Using Ethereal dev SMTP server');
   const testAccount = await nodemailer.createTestAccount();
   return nodemailer.createTransport({
@@ -43,7 +42,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
       to,
       subject,
       html,
-      text: text || html.replace(/<[^>]+>/g, '') // fallback to plain text
+      text: text || html.replace(/<[^>]+>/g, '')
     };
 
     const info = await transporter.sendMail(mailOptions);
@@ -87,7 +86,7 @@ const sendVerificationEmail = async (user, token) => {
 };
 
 /**
- * Send welcome email
+ * Optional: Welcome email
  */
 const sendWelcomeEmail = async (user) => {
   const html = `
@@ -96,8 +95,6 @@ const sendWelcomeEmail = async (user) => {
       <p>Hello <strong>${user.firstName}</strong>,</p>
       <p>Thank you for creating an account with us. We're excited to have you onboard!</p>
       <p>Start exploring our products and enjoy a seamless shopping experience.</p>
-      <p>If you have questions, contact our support team anytime.</p>
-      <p>Happy shopping!</p>
       <p>The Unidigitalcom Team</p>
     </div>
   `;
@@ -109,49 +106,8 @@ const sendWelcomeEmail = async (user) => {
   });
 };
 
-/**
- * Send order confirmation email
- */
-const sendOrderConfirmation = async (order, user) => {
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h1 style="color: #2563eb;">Thank you for your order!</h1>
-      <p>Hello <strong>${user.firstName}</strong>,</p>
-      <p>Your order <strong>#${order.orderNumber}</strong> has been received and is being processed.</p>
-      
-      <h2>Order Summary</h2>
-      <table style="width: 100%; border-collapse: collapse;">
-        <tr>
-          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Item</th>
-          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Qty</th>
-          <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Price</th>
-        </tr>
-        ${order.items.map(item => `
-          <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.name}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.quantity}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">$${item.price}</td>
-          </tr>
-        `).join('')}
-      </table>
-      
-      <p><strong>Total: $${order.total}</strong></p>
-      <p>Status: ${order.orderStatus}</p>
-      <p>You can track your order in your account dashboard.</p>
-      <p>Thank you for shopping with Unidigitalcom!</p>
-    </div>
-  `;
-
-  return sendEmail({
-    to: user.email,
-    subject: `Order Confirmation #${order.orderNumber}`,
-    html
-  });
-};
-
 module.exports = {
   sendEmail,
   sendVerificationEmail,
-  sendWelcomeEmail,
-  sendOrderConfirmation
+  sendWelcomeEmail
 };
