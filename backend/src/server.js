@@ -1,8 +1,12 @@
+// ==================================================================
+// server.js - UniDigital Backend API v2.0
+// ==================================================================
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const connectDB = require('./config/database');
 const Logger = require('./utils/logger');
 const paypal = require('@paypal/checkout-server-sdk');
@@ -10,9 +14,9 @@ const paypal = require('@paypal/checkout-server-sdk');
 // Load environment variables
 dotenv.config();
 
-// ------------------------------------------------------------------
+// ==================================================================
 // 1. INITIALIZE PAYPAL SDK
-// ------------------------------------------------------------------
+// ==================================================================
 let environment, paypalClient;
 if (process.env.PAYPAL_ENVIRONMENT === 'production') {
   environment = new paypal.core.LiveEnvironment(
@@ -27,33 +31,33 @@ if (process.env.PAYPAL_ENVIRONMENT === 'production') {
 }
 paypalClient = new paypal.core.PayPalHttpClient(environment);
 
-// ------------------------------------------------------------------
+// ==================================================================
 // 2. IMPORT ROUTES
-// ------------------------------------------------------------------
+// ==================================================================
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 
-// ------------------------------------------------------------------
+// ==================================================================
 // 3. IMPORT MIDDLEWARE
-// ------------------------------------------------------------------
+// ==================================================================
 const { errorHandler, notFound } = require('./middleware/errorMiddleware');
 
-// ------------------------------------------------------------------
+// ==================================================================
 // 4. INITIALIZE EXPRESS
-// ------------------------------------------------------------------
+// ==================================================================
 const app = express();
 
-// ------------------------------------------------------------------
+// ==================================================================
 // 5. CONNECT TO DATABASE
-// ------------------------------------------------------------------
+// ==================================================================
 connectDB();
 
-// ------------------------------------------------------------------
+// ==================================================================
 // 6. CORS CONFIGURATION
-// ------------------------------------------------------------------
+// ==================================================================
 const allowedOrigins = [
   'http://localhost:3000',
   'https://unidigitalcom-front-end.onrender.com'
@@ -61,34 +65,34 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // Allow Postman or mobile apps
+    if (!origin) return callback(null, true); // Allow Postman, curl, mobile apps
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error('CORS policy: This origin is not allowed'));
   },
   credentials: true
 }));
 
-// ------------------------------------------------------------------
-// 7. OTHER MIDDLEWARE
-// ------------------------------------------------------------------
-app.use(helmet()); // Security headers
-app.use(morgan('dev')); // Logging
-app.use(express.json()); // Parse JSON
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded
-app.use(Logger.request); // Custom request logger
+// ==================================================================
+// 7. GENERAL MIDDLEWARE
+// ==================================================================
+app.use(helmet());
+app.use(morgan('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(Logger.request);
 
-// ------------------------------------------------------------------
+// ==================================================================
 // 8. API ROUTES
-// ------------------------------------------------------------------
+// ==================================================================
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 
-// ------------------------------------------------------------------
+// ==================================================================
 // 9. PAYPAL ENDPOINTS
-// ------------------------------------------------------------------
+// ==================================================================
 
 // Create PayPal order
 app.post('/api/create-paypal-order', async (req, res) => {
@@ -106,10 +110,7 @@ app.post('/api/create-paypal-order', async (req, res) => {
           currency_code: currency,
           value: parseFloat(amount).toFixed(2),
           breakdown: {
-            item_total: {
-              currency_code: currency,
-              value: parseFloat(amount).toFixed(2)
-            }
+            item_total: { currency_code: currency, value: parseFloat(amount).toFixed(2) }
           }
         }
       }],
@@ -235,9 +236,21 @@ app.post('/api/paypal-webhook', express.raw({ type: 'application/json' }), async
   }
 });
 
-// ------------------------------------------------------------------
-// 10. HEALTH CHECKS
-// ------------------------------------------------------------------
+// ==================================================================
+// 10. HEALTH CHECK ROUTES
+// ==================================================================
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    services: {
+      api: 'running',
+      database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      paypal: paypalClient ? 'connected' : 'disconnected'
+    }
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -248,16 +261,18 @@ app.get('/api/health', (req, res) => {
     uptime: process.uptime(),
     features: {
       paypal: paypalClient ? 'connected' : 'disconnected',
-      database: 'connected',
+      database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
       authentication: 'enabled'
     }
   });
 });
 
-// Welcome & API info
+// ==================================================================
+// 11. WELCOME ROUTES
+// ==================================================================
 app.get('/api', (req, res) => {
   res.json({
-    message: 'Welcome to Unidigitalcom API',
+    message: 'Welcome to UniDigitalcom API',
     version: '2.0.0',
     features: [
       'User Authentication & Authorization',
@@ -297,26 +312,27 @@ app.get('/', (req, res) => {
   });
 });
 
-// ------------------------------------------------------------------
-// 11. MIDDLEWARE: 404 & ERROR HANDLING
-// ------------------------------------------------------------------
+// ==================================================================
+// 12. MIDDLEWARE: 404 & ERROR HANDLING
+// ==================================================================
 app.use(notFound);
 app.use(errorHandler);
 
-// ------------------------------------------------------------------
-// 12. START SERVER
-// ------------------------------------------------------------------
+// ==================================================================
+// 13. START SERVER
+// ==================================================================
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   Logger.api(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
   Logger.api(`📊 Health check: http://localhost:${PORT}/api/health`);
   Logger.api(`🔗 API Base URL: http://localhost:${PORT}/api`);
   Logger.api(`💳 PayPal: ${process.env.PAYPAL_ENVIRONMENT === 'production' ? 'Production Mode' : 'Sandbox Mode'}`);
+  Logger.api(`✅ PayPal SDK initialized: ${paypalClient ? 'Yes' : 'No'}`);
 });
 
-// ------------------------------------------------------------------
-// 13. GLOBAL ERROR HANDLERS
-// ------------------------------------------------------------------
+// ==================================================================
+// 14. GLOBAL ERROR HANDLERS
+// ==================================================================
 process.on('unhandledRejection', (err) => {
   Logger.error(`💥 Unhandled Rejection: ${err.message}`);
   Logger.error(err.stack);
@@ -337,5 +353,7 @@ process.on('SIGTERM', () => {
   });
 });
 
-// Export app for testing
+// ==================================================================
+// EXPORT APP
+// ==================================================================
 module.exports = app;
