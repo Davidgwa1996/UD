@@ -68,8 +68,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024,
-    files: 10
+    fileSize: 5 * 1024 * 1024
   }
 });
 
@@ -107,9 +106,9 @@ const handleMulterError = (err, req, res, next) => {
 };
 
 // ------------------------------------------------------------------
-// 6. SAFE WRAPPERS
+// 6. SAFE WRAPPERS (RECOMMENDED)
 // ------------------------------------------------------------------
-const uploadSingle = (field = 'image') => {
+const uploadSingle = (field = 'avatar') => {
   return (req, res, next) => {
     upload.single(field)(req, res, (err) => {
       handleMulterError(err, req, res, next);
@@ -134,10 +133,12 @@ const uploadFields = (fields) => {
 };
 
 // ------------------------------------------------------------------
-// 7. EXPORT (IMPORTANT)
+// 7. EXPORTS (VERY IMPORTANT)
 // ------------------------------------------------------------------
-module.exports = upload;                 // allows upload.single(...)
-module.exports.uploadSingle = uploadSingle;
-module.exports.uploadMultiple = uploadMultiple;
-module.exports.uploadFields = uploadFields;
-module.exports.handleMulterError = handleMulterError;
+module.exports = {
+  upload,            // use upload.single(...)
+  uploadSingle,
+  uploadMultiple,
+  uploadFields,
+  handleMulterError
+};

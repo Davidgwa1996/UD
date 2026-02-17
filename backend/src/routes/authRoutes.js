@@ -27,10 +27,10 @@ const {
 // ------------------------------------------------------------------
 const { protect } = require('../middleware/authMiddleware');
 const { validate } = require('../middleware/validationMiddleware');
-const upload = require('../middleware/uploadMiddleware'); // multer instance
+const upload = require('../middleware/uploadMiddleware'); // use safe wrappers
 
 // ------------------------------------------------------------------
-// SAFETY CHECK (prevents Route.post undefined crash)
+// SAFETY CHECK (prevents route crashes)
 // ------------------------------------------------------------------
 const ensure = (fn, name) => {
   if (typeof fn !== 'function') {
@@ -97,15 +97,48 @@ const deleteAccountValidation = [
 // ------------------------------------------------------------------
 // PUBLIC ROUTES
 // ------------------------------------------------------------------
-router.post('/register', registerValidation, validate, ensure(registerUser,'registerUser'));
-router.post('/login', loginValidation, validate, ensure(loginUser,'loginUser'));
-router.post('/forgot-password', forgotPasswordValidation, validate, ensure(forgotPassword,'forgotPassword'));
-router.post('/reset-password/:token', resetPasswordValidation, validate, ensure(resetPassword,'resetPassword'));
-router.post('/resend-verification', validate, ensure(resendVerification,'resendVerification'));
-router.get('/verify-email/:token', ensure(verifyEmail,'verifyEmail'));
+router.post(
+  '/register',
+  registerValidation,
+  validate,
+  ensure(registerUser, 'registerUser')
+);
+
+router.post(
+  '/login',
+  loginValidation,
+  validate,
+  ensure(loginUser, 'loginUser')
+);
+
+router.post(
+  '/forgot-password',
+  forgotPasswordValidation,
+  validate,
+  ensure(forgotPassword, 'forgotPassword')
+);
+
+router.post(
+  '/reset-password/:token',
+  resetPasswordValidation,
+  validate,
+  ensure(resetPassword, 'resetPassword')
+);
+
+router.post(
+  '/resend-verification',
+  validate,
+  ensure(resendVerification, 'resendVerification')
+);
+
+router.get(
+  '/verify-email/:token',
+  ensure(verifyEmail, 'verifyEmail')
+);
 
 // password strength tester
-router.post('/check-password-strength',
+router.post(
+  '/check-password-strength',
   body('password').notEmpty(),
   validate,
   (req, res) => {
@@ -117,34 +150,47 @@ router.post('/check-password-strength',
 // ------------------------------------------------------------------
 // PROTECTED ROUTES
 // ------------------------------------------------------------------
-router.get('/me', protect, ensure(getMe,'getMe'));
-
-router.put('/update-profile',
+router.get(
+  '/me',
   protect,
-  validate,
-  ensure(updateProfile,'updateProfile')
+  ensure(getMe, 'getMe')
 );
 
-router.put('/change-password',
+router.put(
+  '/update-profile',
+  protect,
+  validate,
+  ensure(updateProfile, 'updateProfile')
+);
+
+router.put(
+  '/change-password',
   protect,
   changePasswordValidation,
   validate,
-  ensure(changePassword,'changePassword')
+  ensure(changePassword, 'changePassword')
 );
 
-router.post('/upload-avatar',
+// ✅ AVATAR UPLOAD (Step 3 fixed)
+router.post(
+  '/upload-avatar',
   protect,
-  upload.single('avatar'),
-  ensure(uploadAvatar,'uploadAvatar')
+  upload.uploadSingle('avatar'), // use safe wrapper from uploadMiddleware
+  ensure(uploadAvatar, 'uploadAvatar')
 );
 
-router.post('/logout', protect, ensure(logoutUser,'logoutUser'));
+router.post(
+  '/logout',
+  protect,
+  ensure(logoutUser, 'logoutUser')
+);
 
-router.delete('/delete-account',
+router.delete(
+  '/delete-account',
   protect,
   deleteAccountValidation,
   validate,
-  ensure(deleteAccount,'deleteAccount')
+  ensure(deleteAccount, 'deleteAccount')
 );
 
 module.exports = router;

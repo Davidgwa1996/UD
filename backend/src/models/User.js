@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema({
   // -------------------------------
@@ -29,14 +30,16 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters'],
     select: false
   },
-  phone: {
-    type: String,
-    trim: true
-  },
+  phone: { type: String, trim: true },
+
+  // -------------------------------
+  // Avatar / Profile Picture
+  // -------------------------------
   avatar: {
-    type: String, // URL of profile picture
+    type: String, // URL
     default: null
   },
+
   // -------------------------------
   // Address
   // -------------------------------
@@ -47,8 +50,9 @@ const userSchema = new mongoose.Schema({
     country: { type: String, default: 'USA' },
     zipCode: { type: String, trim: true }
   },
+
   // -------------------------------
-  // Role & status
+  // Role & account status
   // -------------------------------
   role: {
     type: String,
@@ -60,50 +64,27 @@ const userSchema = new mongoose.Schema({
     enum: ['active', 'suspended', 'deactivated'],
     default: 'active'
   },
-  lastLogin: {
-    type: Date
-  },
+  lastLogin: { type: Date },
+
   // -------------------------------
   // Email verification
   // -------------------------------
-  isEmailVerified: {
-    type: Boolean,
-    default: false
-  },
-  verificationToken: {
-    type: String,
-    default: null
-  },
-  verificationExpires: {
-    type: Date,
-    default: null
-  },
+  isEmailVerified: { type: Boolean, default: false },
+  verificationToken: { type: String, default: null },
+  verificationExpires: { type: Date, default: null },
+
   // -------------------------------
   // Password reset
   // -------------------------------
-  resetPasswordToken: {
-    type: String,
-    default: null
-  },
-  resetPasswordExpires: {
-    type: Date,
-    default: null
-  },
+  resetPasswordToken: { type: String, default: null },
+  resetPasswordExpires: { type: Date, default: null },
+
   // -------------------------------
   // Relationships
   // -------------------------------
-  cart: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Cart'
-  },
-  orders: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Order'
-  }],
-  wishlist: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product'
-  }]
+  cart: { type: mongoose.Schema.Types.ObjectId, ref: 'Cart' },
+  orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
 }, {
   timestamps: true
 });
@@ -114,23 +95,43 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   try {
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
     next();
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 });
 
 // -------------------------------
-// Compare password method
+// Compare password
 // -------------------------------
 userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
 // -------------------------------
-// Remove sensitive data when converting to JSON
+// Generate email verification token
+// -------------------------------
+userSchema.methods.generateVerificationToken = function() {
+  const token = crypto.randomBytes(20).toString('hex');
+  this.verificationToken = token;
+  this.verificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  return token;
+};
+
+// -------------------------------
+// Generate password reset token
+// -------------------------------
+userSchema.methods.generateResetToken = function() {
+  const token = crypto.randomBytes(20).toString('hex');
+  this.resetPasswordToken = token;
+  this.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+  return token;
+};
+
+// -------------------------------
+// Remove sensitive fields from JSON output
 // -------------------------------
 userSchema.methods.toJSON = function() {
   const user = this.toObject();
@@ -143,4 +144,7 @@ userSchema.methods.toJSON = function() {
   return user;
 };
 
+// -------------------------------
+// Export User model
+// -------------------------------
 module.exports = mongoose.model('User', userSchema);
