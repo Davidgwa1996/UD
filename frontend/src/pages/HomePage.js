@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ProductGrid from '../components/ProductGrid';
-import CarouselRow from '../components/CarouselRow';
+import PromoCarouselRow from '../components/PromoCarouselRow'; // ONLY animated component
+import ProductScrollRow from '../components/ProductScrollRow'; // Static
 import { api } from '../services/api';
 import { useCart } from '../context/CartContext';
 import './HomePage.css';
@@ -11,6 +12,8 @@ const HomePage = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [trendingProducts, setTrendingProducts] = useState([]);
+  const [newArrivals, setNewArrivals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [marketData, setMarketData] = useState({
     usIndex: '+3.2%',
@@ -290,33 +293,75 @@ const HomePage = () => {
     }
   ];
 
-  // Prepare items for carousels – include AI fields for the badge
-  const classicCars = globalProducts
-    .filter(p => p.category === "Electric Cars" || p.category === "Luxury Cars")
-    .map(p => ({
-      image: p.image,
-      title: p.name,
-      specs: p.description.split(',')[0],  // short spec
-      aiChange: p.aiChange,
-      aiLocation: p.aiLocation,
-      aiUpdated: p.aiUpdated,
-      link: `/product/${p.id}`
-    }));
+  // Prepare PROMO items for animated carousel (AI-enriched deals)
+  const promoDeals = [
+    {
+      id: 'promo-1',
+      image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=600&h=400&fit=crop&auto=format",
+      title: "Tesla Model Y Performance",
+      specs: "Dual Motor • 303mi range • 0-60 in 3.5s",
+      aiChange: -1.56,
+      aiLocation: "Liverpool",
+      aiUpdated: "3m ago",
+      link: "/product/1"
+    },
+    {
+      id: 'promo-2',
+      image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=400&fit=crop&auto=format",
+      title: "MacBook Pro 16\" M3 Max",
+      specs: "36GB RAM • 1TB SSD • 12-core CPU",
+      aiChange: +0.29,
+      aiLocation: "Liverpool",
+      aiUpdated: "3m ago",
+      link: "/product/2"
+    },
+    {
+      id: 'promo-3',
+      image: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&h=400&fit=crop&auto=format",
+      title: "iPhone 15 Pro Max",
+      specs: "1TB • Titanium • A17 Pro",
+      aiChange: +7.1,
+      aiLocation: "Edinburgh",
+      aiUpdated: "3m ago",
+      link: "/product/3"
+    },
+    {
+      id: 'promo-4',
+      image: "https://images.unsplash.com/photo-1593941707882-a5bba5338fe2?w=600&h=400&fit=crop&auto=format",
+      title: "Range Rover Sport P550e",
+      specs: "542hp • PHEV • Air suspension",
+      aiChange: -1.1,
+      aiLocation: "Birmingham",
+      aiUpdated: "3m ago",
+      link: "/product/6"
+    }
+  ];
 
-  const electronics = globalProducts
-    .filter(p => ["Laptops", "Smartphones", "PC Components", "Gaming", "VR/AR", "Electronics"].includes(p.category))
+  // Prepare TRENDING products for static scroll row
+  const trendingItems = globalProducts
+    .filter(p => p.rating >= 4.8)
+    .slice(0, 8)
     .map(p => ({
+      id: p.id,
       image: p.image,
       title: p.name,
       specs: p.description.split(',')[0],
-      aiChange: p.aiChange,
-      aiLocation: p.aiLocation,
-      aiUpdated: p.aiUpdated,
+      price: p.price,
       link: `/product/${p.id}`
     }));
 
-  // 🔥 Combine both into one array for a single carousel
-  const combinedItems = [...classicCars, ...electronics];
+  // Prepare NEW ARRIVALS for static scroll row
+  const newArrivalsItems = globalProducts
+    .filter(p => p.isNew)
+    .slice(0, 8)
+    .map(p => ({
+      id: p.id,
+      image: p.image,
+      title: p.name,
+      specs: p.description.split(',')[0],
+      price: p.price,
+      link: `/product/${p.id}`
+    }));
 
   // Market data helpers
   const updateMarketTime = () => {
@@ -345,6 +390,8 @@ const HomePage = () => {
   // Load products
   useEffect(() => {
     setFeaturedProducts(globalProducts);
+    setTrendingProducts(globalProducts.filter(p => p.rating >= 4.7));
+    setNewArrivals(globalProducts.filter(p => p.isNew));
     setLoading(false);
 
     const fetchRealProducts = async () => {
@@ -382,15 +429,24 @@ const HomePage = () => {
 
   return (
     <Layout isHomePage>
+      {/* Hero Section - STATIC (not animated) */}
       <div className="home-hero">
         <h1>Global Marketplace Products</h1>
         <p>AI-priced deals from US, UK, China, and Japan markets</p>
       </div>
 
-      {/* 🔥 Single full‑width carousel for both categories */}
-      <CarouselRow title="Classic Cars & Electronics" items={combinedItems} />
+      {/* 🎯 ONLY ANIMATED COMPONENT - Everything else is static */}
+      <PromoCarouselRow title="🔥 AI-Enriched Deals" items={promoDeals} />
 
-      {/* Product Grid – fallback if featuredProducts empty */}
+      {/* PRODUCT SECTION - STATIC SCROLL ROW (Trending) */}
+      <ProductScrollRow title="📈 Trending Products" items={trendingItems} />
+
+      {/* PRODUCT SECTION - STATIC SCROLL ROW (New Arrivals) */}
+      {newArrivalsItems.length > 0 && (
+        <ProductScrollRow title="✨ New Arrivals" items={newArrivalsItems} />
+      )}
+
+      {/* Product Grid – STATIC (featured products) */}
       <section className="products-section">
         <div className="section-header">
           <h2 className="section-title">Featured Global Products</h2>
@@ -406,7 +462,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Market Features */}
+      {/* Market Features - STATIC */}
       <section className="market-features">
         <div className="section-header">
           <h2 className="section-title">Market Intelligence Features</h2>
@@ -428,7 +484,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Global Market Indices */}
+      {/* Global Market Indices - STATIC */}
       <section className="market-data-section">
         <div className="section-header">
           <h2 className="section-title">Global Market Indices</h2>

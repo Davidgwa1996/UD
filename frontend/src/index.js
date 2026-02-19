@@ -1,4 +1,4 @@
-// src/index.js - Optimized for Immediate Loading
+// src/index.js - Optimized for Immediate Loading with Animations ONLY on Promo Sections
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
@@ -38,7 +38,7 @@ const criticalCSS = `
     background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
   }
 
-  /* Loading Screen */
+  /* Loading Screen - NO animations */
   #app-loading {
     position: fixed;
     top: 0;
@@ -77,6 +77,14 @@ const criticalCSS = `
   .hidden {
     display: none !important;
   }
+
+  /* Toast Container */
+  .toast-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 9998;
+  }
 `;
 
 // Inject critical CSS immediately
@@ -88,7 +96,7 @@ if (typeof document !== 'undefined') {
 }
 
 // ============================================
-// ERROR BOUNDARY
+// ERROR BOUNDARY - NO ANIMATIONS
 // ============================================
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -108,7 +116,7 @@ class ErrorBoundary extends React.Component {
     console.error('React Error Boundary:', error, errorInfo);
     this.setState({ errorInfo });
     
-    // Log to error reporting service
+    // Log to error reporting service if available
     if (window.errorReportingService) {
       window.errorReportingService.captureException(error);
     }
@@ -149,6 +157,7 @@ class ErrorBoundary extends React.Component {
             textAlign: 'center',
             backdropFilter: 'blur(10px)'
           }}>
+            {/* Static error icon - NO animation */}
             <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⚠️</div>
             <h2 style={{ 
               fontSize: '1.5rem', 
@@ -327,12 +336,10 @@ if (!rootElement) {
   // Network status monitoring
   window.addEventListener('online', () => {
     console.log('Application is back online');
-    // Could show a toast notification here
   });
 
   window.addEventListener('offline', () => {
     console.warn('Application is offline');
-    // Could show an offline notification
   });
 
   // ============================================
@@ -466,6 +473,7 @@ if (!rootElement) {
             containerStyle={{
               top: 80,
               right: 20,
+              zIndex: 9999
             }}
             toastOptions={{
               duration: 4000,
@@ -516,25 +524,7 @@ if (!rootElement) {
   setTimeout(() => {
     hideLoadingScreen();
     clearTimeout(loadingTimeout);
-  }, 1000); // Hide after 1 second (adjust based on your app load time)
-
-  // ============================================
-  // (REMOVED) PWA INSTALL PROMPT – Service worker is unregistered
-  // ============================================
-  // The beforeinstallprompt event is no longer relevant because
-  // the service worker is unregistered. If you need PWA later,
-  // re‑enable the service worker and uncomment the block below.
-  /*
-  if ('BeforeInstallPromptEvent' in window) {
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      // ... (install prompt code) ...
-    });
-    window.addEventListener('appinstalled', () => { ... });
-  }
-  */
+  }, 1000); // Hide after 1 second
 
   // ============================================
   // STARTUP LOGS
@@ -546,6 +536,7 @@ if (!rootElement) {
     Environment: ${process.env.NODE_ENV || 'development'}
     Build Date: ${new Date().toISOString().split('T')[0]}
     User Agent: ${navigator.userAgent}
+    Animations: Active ONLY on promo sections
     =================================
   `);
 }

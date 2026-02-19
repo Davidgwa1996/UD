@@ -6,7 +6,6 @@
   padding: 12px;
   width: 100%;
   box-sizing: border-box;
-  overflow: visible;
 }
 
 /* Tablet: 3 columns */
@@ -27,26 +26,19 @@
   }
 }
 
-/* ===== PRODUCT CARD – ULTRA COMPACT ===== */
+/* ===== PRODUCT CARD – CLEAN, NO BACKGROUND ===== */
 .product-card-custom {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: 0.2s ease;
   width: 100%;
   box-sizing: border-box;
-  overflow: visible;
-  height: auto;
 }
 
 .product-card-custom:hover {
-  transform: translateY(-2px);
-  border-color: #3b82f6;
-  background: rgba(255, 255, 255, 0.05);
+  opacity: 0.9;
 }
 
 /* ===== IMAGE ===== */
@@ -60,7 +52,6 @@
   height: 100px;
   border-radius: 8px;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(41,121,255,0.1));
 }
 
 .product-image-custom img {
@@ -81,7 +72,7 @@
 }
 
 .product-name-custom:hover {
-  color: #00e5ff;
+  color: #60a5fa;
 }
 
 .product-category-custom {
@@ -120,21 +111,15 @@
 .price-custom {
   font-weight: 800;
   color: #64ffda;
-  background: linear-gradient(135deg, #64ffda, #00bfa5);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 .stock-custom {
-  background: #0f172a;
-  padding: 2px 6px;
-  border-radius: 12px;
-  color: white;
+  color: #94a3b8;
   font-size: 0.6rem;
   font-weight: 600;
 }
 
-/* ===== BUTTONS – IDENTICAL ===== */
+/* ===== BUTTONS – CLEAN ===== */
 .product-buttons-custom {
   display: flex;
   gap: 8px;
@@ -153,7 +138,7 @@
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
@@ -164,6 +149,15 @@
 .btn-custom:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.analysis-btn {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.analysis-btn:hover {
+  background: rgba(139, 92, 246, 0.1);
 }
 
 /* ===== NO PRODUCTS ===== */
@@ -191,10 +185,11 @@
 }
 
 /* ===== AI BADGE – STYLES SHOULD BE IN AIPriceBadge.css ===== */
-/* This file only contains product grid layout; badge styling is separate */
+.ai-badge-wrapper {
+  margin: 4px 0;
+}
 
-/* ===== EMERGENCY SCROLL OVERRIDES – DO NOT REMOVE ===== */
-/* Guarantee no hidden overflow on product grid elements */
+/* ===== EMERGENCY SCROLL OVERRIDES ===== */
 .product-grid-custom,
 .product-card-custom,
 .product-image-custom,
@@ -205,7 +200,6 @@
   height: auto !important;
 }
 
-/* Keep image overflow hidden for proper cropping */
 .product-image-custom {
   overflow: hidden !important;
 }

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import ModernHeader from '../components/ModernHeader';
 import ModernFooter from '../components/ModernFooter';
 import { api } from '../services/api'; // Changed from openaiService to api
 import './MarketAnalysisPage.css';
