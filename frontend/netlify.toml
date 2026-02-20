@@ -1,7 +1,7 @@
 [build]
   base = "frontend"
   command = "npm run build"
-  publish = "frontend/build"
+  publish = "build"  # ✅ Relative to the base directory
 
 [build.environment]
   NODE_VERSION = "24.x"
