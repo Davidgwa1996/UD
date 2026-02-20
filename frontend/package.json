@@ -60,19 +60,6 @@
   "overrides": {
     "react": "$react",
     "react-dom": "$react-dom",
-    "@react-three/fiber": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    },
-    "react-konva": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    }
-  },
-  "resolutions": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "@react-three/fiber/react": "18.3.1",
-    "react-konva/react": "18.3.1"
+    "typescript": "4.9.5"
   }
 }
