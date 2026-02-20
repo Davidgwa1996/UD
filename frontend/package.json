@@ -59,7 +59,6 @@
   },
   "overrides": {
     "react": "$react",
-    "react-dom": "$react-dom",
-    "typescript": "4.9.5"
+    "react-dom": "$react-dom"
   }
 }
