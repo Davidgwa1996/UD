@@ -2,7 +2,7 @@
 /node_modules
 /.pnp
 .pnp.js
-package-lock.json
+# package-lock.json   <-- either delete or comment out
 yarn.lock
 
 # testing
