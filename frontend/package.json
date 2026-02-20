@@ -16,8 +16,8 @@
     "axios": "^1.13.5",
     "framer-motion": "^12.34.2",
     "lucide-react": "^0.563.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-helmet": "^6.1.0",
     "react-hot-toast": "^2.6.0",
     "react-intersection-observer": "^10.0.3",
@@ -26,10 +26,10 @@
     "react-spring": "^10.0.3"
   },
   "scripts": {
-    "start": "npx react-scripts start",
-    "build": "npx react-scripts build",
-    "test": "npx react-scripts test",
-    "eject": "npx react-scripts eject"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
@@ -55,5 +55,23 @@
     "postcss": "^8.5.6",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "^3.4.19"
+  },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom",
+    "@react-three/fiber": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
+    "react-konva": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
+  },
+  "resolutions": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@react-three/fiber/react": "18.3.1",
+    "react-konva/react": "18.3.1"
   }
 }
