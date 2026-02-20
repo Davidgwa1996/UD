@@ -1,10 +1,10 @@
 [build]
   base = "frontend"
   command = "npm run build"
-  publish = "build"  # ✅ Relative to the base directory
+  publish = "build"
 
 [build.environment]
-  NODE_VERSION = "24.x"
+  NODE_VERSION = "22.x"  # Changed from 24.x to 22.x (LTS, more stable)
 
 [[redirects]]
   from = "/*"
@@ -18,3 +18,4 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"  # Added for extra security
