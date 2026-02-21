@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue, useReducedMotion } from 'framer-motion';
 import Header from './ModernHeader';
 import Footer from './ModernFooter';
 import DynamicBackground from './DynamicBackground';
@@ -18,7 +18,7 @@ function Layout({
   className = '',
   fullWidth = false,
   containerClass = '',
-  // New animation props
+  // Animation props
   backgroundVariant = 'gradient',           
   backgroundIntensity = 0.4,                 
   backgroundSpeed = 0.8,                      
@@ -26,9 +26,17 @@ function Layout({
   enableParallax = true,
   enableMouseEffects = true,
   transitionSpeed = 1,
-  disableAnimations = false                    
+  disableAnimations = false,
+  // New props
+  onScrollThreshold = null,
+  scrollThreshold = 200,
+  enablePullToRefresh = false,
+  enableInfiniteScroll = false,
+  onInfiniteScroll = null,
+  loadingComponent = null,
+  errorBoundary = null
 }) {
-  // Internal state for mobile menu if not controlled externally
+  // State management
   const [internalMobileMenuOpen, setInternalMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -36,47 +44,68 @@ function Layout({
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [pullToRefreshProgress, setPullToRefreshProgress] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
+  // Refs
   const headerRef = useRef(null);
   const mainContentRef = useRef(null);
   const resizeObserverRef = useRef(null);
   const layoutRef = useRef(null);
+  const pullToRefreshRef = useRef(null);
+  const infiniteScrollObserverRef = useRef(null);
+  const touchStartY = useRef(0);
   
-  // Motion values for mouse position - always created at top level
+  // Motion values - always created at top level
   const mouseXMotion = useMotionValue(0);
   const mouseYMotion = useMotionValue(0);
+  const pullProgress = useMotionValue(0);
   
-  // Framer Motion scroll animations - always called at top level
+  // Check for reduced motion preference
+  const prefersReducedMotion = useReducedMotion();
+  
+  // Framer Motion scroll animations
   const { scrollY, scrollYProgress } = useScroll({
     target: layoutRef,
     offset: ["start start", "end end"]
   });
 
-  // Transform values for parallax effects - always called at top level
+  // Transform values for parallax effects
   const headerOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0.95]);
   const headerBlur = useTransform(scrollYProgress, [0, 0.1], [0, 5]);
   const headerScale = useTransform(scrollYProgress, [0, 0.1], [1, 0.98]);
+  const headerShadow = useTransform(scrollYProgress, [0, 0.1], [0, 10]);
   
   const backgroundY = useTransform(scrollY, [0, 1000], [0, -200]);
   const backgroundRotate = useTransform(mouseXMotion, [-1, 1], [-5, 5]);
   
-  // Mouse transforms - always called at top level
+  // Mouse transforms
   const rotateX = useTransform(mouseYMotion, [-1, 1], [2, -2]);
   const rotateY = useTransform(mouseXMotion, [-1, 1], [-2, 2]);
   const scaleTransform = useTransform(mouseYMotion, [-1, 1], [1.02, 0.98]);
   const blurTransform = useTransform(scrollY, [0, 500], [0, 5]);
   
-  // Overlay opacity based on scroll - always called at top level
+  // Overlay opacity based on scroll
   const overlayOpacity = useTransform(scrollY, [0, 500], [0, 0.5]);
   
-  // Header Y position based on scroll - always called at top level
+  // Header Y position based on scroll
   const headerY = useTransform(scrollY, [0, 100], [0, -100]);
   
   // Spring animations for smooth movement
   const springConfig = { stiffness: 100, damping: 30, mass: 1 };
   const smoothBackgroundY = useSpring(backgroundY, springConfig);
   const smoothBackgroundRotate = useSpring(backgroundRotate, springConfig);
+  const smoothHeaderShadow = useSpring(headerShadow, springConfig);
+
+  // Memoized values
+  const isMobile = useMemo(() => windowSize.width <= 768, [windowSize.width]);
+  const isTablet = useMemo(() => windowSize.width > 768 && windowSize.width <= 1024, [windowSize.width]);
+  const shouldAnimate = useMemo(() => 
+    !disableAnimations && !prefersReducedMotion, 
+    [disableAnimations, prefersReducedMotion]
+  );
 
   // Use external props if provided, otherwise use internal state
   const isMobileMenuOpen = externalMobileMenuOpen !== undefined 
@@ -88,25 +117,14 @@ function Layout({
     [isMobileMenuOpen, externalOnMobileMenuToggle]
   );
 
-  // Close mobile menu when clicking outside (if internally controlled)
+  // Close mobile menu when clicking outside
   const handleCloseMobileMenu = useCallback(() => {
     if (externalMobileMenuOpen === undefined) {
       setInternalMobileMenuOpen(false);
     }
   }, [externalMobileMenuOpen]);
 
-  // Check for reduced motion preference
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-    
-    const handleChange = (e) => setPrefersReducedMotion(e.matches);
-    mediaQuery.addEventListener('change', handleChange);
-    
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-
-  // Track window size for responsive animations
+  // Track window size
   useEffect(() => {
     const handleResize = () => {
       setWindowSize({
@@ -121,9 +139,9 @@ function Layout({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Mouse tracking for interactive effects - update motion values
+  // Mouse tracking for interactive effects
   useEffect(() => {
-    if (!enableMouseEffects || disableAnimations || prefersReducedMotion) return;
+    if (!enableMouseEffects || !shouldAnimate || isMobile) return;
     
     const handleMouseMove = (e) => {
       if (layoutRef.current) {
@@ -137,9 +155,9 @@ function Layout({
     
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [enableMouseEffects, disableAnimations, prefersReducedMotion, mouseXMotion, mouseYMotion]);
+  }, [enableMouseEffects, shouldAnimate, isMobile, mouseXMotion, mouseYMotion]);
 
-  // Measure header height for proper spacing
+  // Measure header height
   useEffect(() => {
     if (!showHeader || isHomePage) {
       setHeaderHeight(0);
@@ -182,15 +200,22 @@ function Layout({
         setScrollDirection('up');
       }
       
-      // Hide/show header on scroll down/up
-      if (currentScrollY > 100 && currentScrollY > lastScrollY) {
-        setIsVisible(false);
-      } else {
-        setIsVisible(true);
+      // Hide/show header on scroll down/up (mobile only)
+      if (isMobile) {
+        if (currentScrollY > 100 && currentScrollY > lastScrollY) {
+          setIsVisible(false);
+        } else {
+          setIsVisible(true);
+        }
       }
       
       setIsScrolled(scrolled);
       setLastScrollY(currentScrollY);
+      
+      // Call scroll threshold callback
+      if (onScrollThreshold && currentScrollY > scrollThreshold) {
+        onScrollThreshold(currentScrollY);
+      }
       
       // Update body class
       if (scrolled) {
@@ -204,55 +229,83 @@ function Layout({
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // initial check
+    handleScroll();
     
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY, scrollDirection]);
+  }, [lastScrollY, scrollDirection, isMobile, onScrollThreshold, scrollThreshold]);
 
-  // Page transition animations
-  const pageVariants = {
-    initial: { 
-      opacity: 0,
-      y: 20,
-      scale: 0.98
-    },
-    animate: { 
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        duration: 0.6 * transitionSpeed,
-        ease: [0.6, -0.05, 0.01, 0.99],
-        staggerChildren: 0.1
-      }
-    },
-    exit: { 
-      opacity: 0,
-      y: -20,
-      scale: 1.02,
-      transition: {
-        duration: 0.4 * transitionSpeed,
-        ease: [0.6, -0.05, 0.01, 0.99]
-      }
-    }
-  };
+  // Pull to refresh functionality
+  useEffect(() => {
+    if (!enablePullToRefresh || !isMobile) return;
 
-  // Content entrance animations
-  const contentVariants = {
-    initial: { 
-      opacity: 0,
-      y: 30
-    },
-    animate: { 
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15
+    const handleTouchStart = (e) => {
+      if (window.scrollY === 0) {
+        touchStartY.current = e.touches[0].clientY;
       }
+    };
+
+    const handleTouchMove = (e) => {
+      if (window.scrollY === 0 && touchStartY.current) {
+        const currentY = e.touches[0].clientY;
+        const diff = currentY - touchStartY.current;
+        
+        if (diff > 0) {
+          e.preventDefault();
+          const progress = Math.min(diff / 100, 1);
+          setPullToRefreshProgress(progress);
+          pullProgress.set(progress);
+        }
+      }
+    };
+
+    const handleTouchEnd = async () => {
+      if (pullToRefreshProgress > 0.7) {
+        setIsRefreshing(true);
+        try {
+          await onInfiniteScroll?.('refresh');
+        } finally {
+          setIsRefreshing(false);
+        }
+      }
+      setPullToRefreshProgress(0);
+      pullProgress.set(0);
+      touchStartY.current = 0;
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [enablePullToRefresh, isMobile, pullToRefreshProgress, onInfiniteScroll, pullProgress]);
+
+  // Infinite scroll
+  useEffect(() => {
+    if (!enableInfiniteScroll || !onInfiniteScroll || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && hasMore) {
+          setIsLoadingMore(true);
+          onInfiniteScroll().then((hasMoreItems) => {
+            setHasMore(hasMoreItems);
+            setIsLoadingMore(false);
+          });
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+
+    if (infiniteScrollObserverRef.current) {
+      observer.observe(infiniteScrollObserverRef.current);
     }
-  };
+
+    return () => observer.disconnect();
+  }, [enableInfiniteScroll, onInfiniteScroll, isLoadingMore, hasMore]);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -285,8 +338,20 @@ function Layout({
     };
   }, [isMobileMenuOpen]);
 
-  // Determine main content padding based on header and homepage
-  const mainStyle = (() => {
+  // Handle escape key for mobile menu
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isMobileMenuOpen) {
+        handleCloseMobileMenu();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isMobileMenuOpen, handleCloseMobileMenu]);
+
+  // Memoized styles
+  const mainStyle = useMemo(() => {
     if (!showHeader) return {};
     if (isHomePage) {
       return { paddingTop: 0 };
@@ -295,26 +360,81 @@ function Layout({
       paddingTop: `${headerHeight}px`,
       transition: 'padding-top 0.3s ease'
     };
-  })();
+  }, [showHeader, isHomePage, headerHeight]);
 
-  // Determine if animations should run
-  const shouldAnimate = !disableAnimations && !prefersReducedMotion;
-
-  // Create background style with motion values
-  const backgroundStyle = {
+  const backgroundStyle = useMemo(() => ({
     y: smoothBackgroundY,
     rotate: smoothBackgroundRotate,
     scale: scaleTransform,
     filter: `blur(${blurTransform}px)`,
-  };
+  }), [smoothBackgroundY, smoothBackgroundRotate, scaleTransform, blurTransform]);
 
-  // Create overlay background gradient - use .get() for static value
-  const overlayBackground = `radial-gradient(circle at ${50 + mouseXMotion.get() * 20}% ${50 + mouseYMotion.get() * 20}%, rgba(59,130,246,0.05), transparent 70%)`;
+  // Overlay background gradient
+  const overlayBackground = useMemo(() => 
+    `radial-gradient(circle at ${50 + mouseXMotion.get() * 20}% ${50 + mouseYMotion.get() * 20}%, rgba(59,130,246,0.05), transparent 70%)`,
+    [mouseXMotion, mouseYMotion]
+  );
+
+  // Animation variants
+  const pageVariants = useMemo(() => ({
+    initial: { 
+      opacity: 0,
+      y: isMobile ? 10 : 20,
+      scale: isMobile ? 1 : 0.98
+    },
+    animate: { 
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: (isMobile ? 0.4 : 0.6) * transitionSpeed,
+        ease: [0.6, -0.05, 0.01, 0.99],
+        staggerChildren: isMobile ? 0.05 : 0.1
+      }
+    },
+    exit: { 
+      opacity: 0,
+      y: isMobile ? -10 : -20,
+      scale: isMobile ? 1 : 1.02,
+      transition: {
+        duration: (isMobile ? 0.3 : 0.4) * transitionSpeed,
+        ease: [0.6, -0.05, 0.01, 0.99]
+      }
+    }
+  }), [isMobile, transitionSpeed]);
+
+  const contentVariants = useMemo(() => ({
+    initial: { 
+      opacity: 0,
+      y: isMobile ? 20 : 30
+    },
+    animate: { 
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: isMobile ? 80 : 100,
+        damping: isMobile ? 12 : 15
+      }
+    }
+  }), [isMobile]);
+
+  const pullToRefreshVariants = {
+    initial: { y: -100 },
+    animate: { 
+      y: 0,
+      transition: { type: "spring", stiffness: 300, damping: 30 }
+    },
+    exit: { 
+      y: -100,
+      transition: { duration: 0.2 }
+    }
+  };
 
   return (
     <motion.div 
       ref={layoutRef}
-      className={`layout ${isScrolled ? 'scrolled' : ''} ${scrollDirection} ${className}`}
+      className={`layout ${isScrolled ? 'scrolled' : ''} ${scrollDirection} ${className} ${isMobile ? 'mobile' : ''} ${isTablet ? 'tablet' : ''}`}
       initial="initial"
       animate="animate"
       exit="exit"
@@ -323,43 +443,104 @@ function Layout({
         position: 'relative',
         minHeight: '100vh',
         overflowX: 'hidden',
-        perspective: shouldAnimate ? 1000 : 'none',
-        rotateX: shouldAnimate ? rotateX : 0,
-        rotateY: shouldAnimate ? rotateY : 0,
+        perspective: shouldAnimate && !isMobile ? 1000 : 'none',
+        rotateX: shouldAnimate && !isMobile ? rotateX : 0,
+        rotateY: shouldAnimate && !isMobile ? rotateY : 0,
       }}
     >
-      {/* Dynamic Background with animations */}
+      {/* Pull to refresh indicator */}
+      {enablePullToRefresh && isMobile && (
+        <AnimatePresence>
+          {pullToRefreshProgress > 0 && (
+            <motion.div
+              ref={pullToRefreshRef}
+              className="pull-to-refresh"
+              variants={pullToRefreshVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 60,
+                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                zIndex: 1002,
+                transform: `translateY(${pullToRefreshProgress * 60 - 60}px)`
+              }}
+            >
+              {isRefreshing ? (
+                <>
+                  <motion.div 
+                    className="spinner"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTopColor: 'white',
+                      borderRadius: '50%',
+                      marginRight: 10
+                    }}
+                  />
+                  <span>Refreshing...</span>
+                </>
+              ) : (
+                <>
+                  <motion.span
+                    animate={{ rotate: pullToRefreshProgress * 180 }}
+                    style={{ marginRight: 10, fontSize: 20 }}
+                  >
+                    ↓
+                  </motion.span>
+                  <span>Pull to refresh</span>
+                </>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+
+      {/* Dynamic Background */}
       {shouldAnimate && (
         <DynamicBackground
           variant={backgroundVariant}
-          intensity={backgroundIntensity}
-          speed={backgroundSpeed}
+          intensity={isMobile ? backgroundIntensity * 0.7 : backgroundIntensity}
+          speed={isMobile ? backgroundSpeed * 0.5 : backgroundSpeed}
           colors={backgroundColors}
-          interactive={enableMouseEffects}
+          interactive={enableMouseEffects && !isMobile}
           style={backgroundStyle}
         />
       )}
 
-      {/* Animated overlay that changes with scroll */}
-      <motion.div 
-        className="layout-overlay"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: overlayBackground,
-          pointerEvents: 'none',
-          zIndex: 1,
-          opacity: overlayOpacity // Using the pre-defined motion value
-        }}
-      />
-
-      {/* Animated particles */}
+      {/* Animated overlay */}
       {shouldAnimate && (
+        <motion.div 
+          className="layout-overlay"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: overlayBackground,
+            pointerEvents: 'none',
+            zIndex: 1,
+            opacity: overlayOpacity
+          }}
+        />
+      )}
+
+      {/* Animated particles - reduced on mobile */}
+      {shouldAnimate && !isMobile && (
         <div className="layout-particles">
-          {[...Array(20)].map((_, i) => (
+          {[...Array(isMobile ? 10 : 20)].map((_, i) => (
             <motion.div
               key={i}
               className="particle"
@@ -390,7 +571,7 @@ function Layout({
         </div>
       )}
 
-      {/* Header with animations */}
+      {/* Header */}
       {showHeader && (
         <motion.div 
           ref={headerRef}
@@ -401,16 +582,13 @@ function Layout({
             left: 0,
             right: 0,
             zIndex: 1000,
-            y: headerY, // Using the pre-defined motion value
+            y: isMobile ? (isVisible ? 0 : -100) : headerY,
             opacity: headerOpacity,
             scale: headerScale,
             filter: `blur(${headerBlur}px)`,
+            boxShadow: smoothHeaderShadow.get() > 0 ? `0 4px 20px rgba(0,0,0,${smoothHeaderShadow.get() / 20})` : 'none',
             transition: 'transform 0.3s ease'
           }}
-          animate={{
-            y: isVisible ? 0 : -100
-          }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
           {customHeader ? customHeader : (
             <Header 
@@ -422,7 +600,7 @@ function Layout({
         </motion.div>
       )}
       
-      {/* Mobile Menu Overlay with fade animation */}
+      {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div 
@@ -444,7 +622,7 @@ function Layout({
         )}
       </AnimatePresence>
       
-      {/* Main content with entrance animations */}
+      {/* Main content */}
       <motion.main 
         ref={mainContentRef}
         className={`main-content ${containerClass} ${isHomePage ? 'home-page' : ''}`}
@@ -453,7 +631,7 @@ function Layout({
           ...mainStyle,
           position: 'relative',
           zIndex: 2,
-          minHeight: 'calc(100vh - var(--header-height, 0px))'
+          minHeight: `calc(100vh - var(--header-height, 0px) - var(--footer-height, 0px))`
         }}
         variants={contentVariants}
       >
@@ -471,13 +649,19 @@ function Layout({
               animate="animate"
               exit="exit"
             >
-              {children}
+              {errorBoundary ? (
+                <ErrorBoundary fallback={errorBoundary}>
+                  {children}
+                </ErrorBoundary>
+              ) : (
+                children
+              )}
             </motion.div>
           </AnimatePresence>
         </motion.div>
 
-        {/* Scroll progress indicator */}
-        {shouldAnimate && (
+        {/* Scroll progress indicator - hidden on mobile */}
+        {shouldAnimate && !isMobile && (
           <motion.div 
             className="scroll-progress"
             style={{
@@ -495,21 +679,36 @@ function Layout({
         )}
       </motion.main>
       
-      {/* Footer with entrance animation */}
+      {/* Footer */}
       {showFooter && (
         <motion.footer
           variants={fadeInUp}
           initial="initial"
           animate="animate"
-          transition={{ delay: 0.2 }}
+          transition={{ delay: isMobile ? 0.1 : 0.2 }}
           style={{ position: 'relative', zIndex: 2 }}
         >
           {customFooter ? customFooter : <Footer />}
         </motion.footer>
       )}
 
-      {/* Floating action button for back to top */}
-      {shouldAnimate && (
+      {/* Infinite scroll sentinel */}
+      {enableInfiniteScroll && (
+        <div 
+          ref={infiniteScrollObserverRef}
+          style={{ height: 20, width: '100%' }}
+        />
+      )}
+
+      {/* Loading indicator for infinite scroll */}
+      {isLoadingMore && loadingComponent && (
+        <div className="infinite-scroll-loading">
+          {loadingComponent}
+        </div>
+      )}
+
+      {/* Back to top button - hidden on mobile */}
+      {shouldAnimate && !isMobile && (
         <AnimatePresence>
           {isScrolled && (
             <motion.button
@@ -539,14 +738,51 @@ function Layout({
                 justifyContent: 'center',
                 fontSize: 24
               }}
+              aria-label="Back to top"
             >
               ↑
             </motion.button>
           )}
         </AnimatePresence>
       )}
+
+      {/* Mobile bottom navigation spacer */}
+      {isMobile && (
+        <div style={{ height: 60 }} />
+      )}
     </motion.div>
   );
+}
+
+// Simple Error Boundary component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Layout Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="error-boundary">
+          <h2>Something went wrong</h2>
+          <button onClick={() => window.location.reload()}>
+            Refresh Page
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 // Animation variants for children

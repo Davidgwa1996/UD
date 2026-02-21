@@ -1,6 +1,7 @@
 /* ============================================
    APP-WIDE STYLES FOR UNIDIGITAL MARKETPLACE
    ENHANCED WITH CONTINUOUS MOVEMENT & BLENDING
+   FIXED FOR MOBILE RESPONSIVENESS
    ============================================ */
 
 /* === CSS Reset & Base === */
@@ -10,8 +11,15 @@
   box-sizing: border-box;
 }
 
+/* ADDED: Debug helper - uncomment to see overflow elements */
+/*
+.debug * {
+  outline: 1px solid rgba(255,0,0,0.3) !important;
+}
+*/
+
 :root {
-  /* Color Palette */
+  /* Color Palette - unchanged */
   --primary-blue: #3b82f6;
   --primary-blue-dark: #1d4ed8;
   --primary-blue-light: #93c5fd;
@@ -38,7 +46,7 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   
-  /* Spacing */
+  /* Spacing - ADDED more granular control */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
@@ -46,6 +54,11 @@
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
   --spacing-3xl: 4rem;
+  
+  /* Mobile specific spacing */
+  --mobile-spacing-sm: 0.75rem;
+  --mobile-spacing-md: 1rem;
+  --mobile-spacing-lg: 1.25rem;
   
   /* Border Radius */
   --radius-sm: 0.375rem;
@@ -59,12 +72,13 @@
   --transition-normal: 250ms ease-in-out;
   --transition-slow: 350ms ease-in-out;
   
-  /* Layout */
+  /* Layout - ADDED max widths for containers */
   --header-height: 80px;
   --mobile-header-height: 70px;
   --footer-height: 400px;
   --mobile-footer-height: 300px;
   --container-max-width: 1200px;
+  --mobile-container-padding: 1rem;
   
   /* Animation Variables */
   --animation-speed: 0.3s;
@@ -74,12 +88,14 @@
   --gradient-shine: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
 }
 
-/* === Base Body & HTML === */
+/* === Base Body & HTML - FIXED for mobile overflow === */
 html {
   scroll-behavior: smooth;
   scrollbar-gutter: stable;
   overflow-x: hidden;
   background: var(--bg-darker);
+  width: 100%;
+  max-width: 100%;
 }
 
 body {
@@ -92,6 +108,7 @@ body {
   overflow-x: hidden;
   position: relative;
   width: 100%;
+  max-width: 100%;
   background: radial-gradient(circle at 50% 50%, var(--bg-dark), var(--bg-darker));
   animation: backgroundColorPulse 10s ease infinite;
 }
@@ -114,6 +131,8 @@ body {
   flex-direction: column;
   position: relative;
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .App {
@@ -122,10 +141,134 @@ body {
   flex-direction: column;
   flex: 1;
   width: 100%;
+  max-width: 100%;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* === ADDED: Horizontal Scroll Container === */
+.horizontal-scroll-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-blue) var(--bg-card);
+  position: relative;
+  padding-bottom: 10px; /* Space for scrollbar */
+}
+
+.horizontal-scroll-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.horizontal-scroll-container::-webkit-scrollbar-track {
+  background: var(--bg-card);
+  border-radius: 10px;
+}
+
+.horizontal-scroll-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, var(--primary-blue), var(--secondary-purple));
+  border-radius: 10px;
+}
+
+.horizontal-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, var(--primary-blue-light), var(--primary-blue));
+}
+
+/* Scroll hint indicator */
+.scroll-hint {
   position: relative;
 }
 
-/* === Animated Background Overlay === */
+.scroll-hint::after {
+  content: '→';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, var(--primary-blue), var(--secondary-purple));
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  z-index: 10;
+}
+
+.horizontal-scroll-container:hover .scroll-hint::after,
+.horizontal-scroll-container:active .scroll-hint::after {
+  opacity: 0.7;
+}
+
+/* ADDED: Swipeable container */
+.swipeable-container {
+  touch-action: pan-y pinch-zoom;
+  width: 100%;
+  position: relative;
+}
+
+/* === ADDED: Mobile swipe navigation === */
+.mobile-swipe-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  width: 100%;
+}
+
+.swipe-indicator {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.swipe-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-color);
+  transition: all 0.3s;
+}
+
+.swipe-dot.active {
+  width: 20px;
+  background: linear-gradient(90deg, var(--primary-blue), var(--secondary-purple));
+  border-radius: 10px;
+}
+
+/* === ADDED: Touch-friendly buttons === */
+@media (max-width: 768px) {
+  button, 
+  .btn,
+  .payment-method-card,
+  .region-card,
+  .currency-chip,
+  [role="button"],
+  a {
+    min-height: 44px; /* Apple's minimum touch target size */
+    min-width: 44px;
+  }
+  
+  /* Increase tap target size for small icons */
+  .payment-method-icon,
+  .region-flag,
+  .security-badge-icon {
+    padding: 8px;
+    margin: -8px; /* Offset padding to maintain visual spacing */
+  }
+}
+
+/* === Animated Background Overlay - FIXED for mobile performance === */
 .app-background {
   position: fixed;
   top: 0;
@@ -135,6 +278,7 @@ body {
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
+  will-change: transform; /* Performance optimization */
 }
 
 .app-background::before {
@@ -153,12 +297,18 @@ body {
   z-index: 0;
 }
 
-@keyframes backgroundRotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* Performance optimization - disable heavy animations on mobile */
+@media (max-width: 768px) {
+  .app-background::before {
+    animation: none; /* Static background on mobile for performance */
+  }
+  
+  .particle {
+    display: none; /* Hide particles on mobile */
+  }
 }
 
-/* === Floating Particles === */
+/* === Floating Particles - FIXED positioning === */
 .app-particles {
   position: fixed;
   top: 0;
@@ -198,13 +348,14 @@ body {
   }
 }
 
-/* === Typography with Animation === */
+/* === Typography - ALREADY GOOD with clamp() === */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.2;
   margin-bottom: var(--spacing-md);
   word-wrap: break-word;
   overflow-wrap: break-word;
+  max-width: 100%;
   animation: textEntrance 0.6s var(--animation-timing);
 }
 
@@ -243,6 +394,7 @@ p {
   margin-bottom: var(--spacing-md);
   line-height: 1.6;
   word-wrap: break-word;
+  max-width: 100%;
   animation: fadeInUp 0.6s var(--animation-timing);
 }
 
@@ -262,6 +414,7 @@ a {
   text-decoration: none;
   transition: all var(--transition-fast);
   position: relative;
+  word-break: break-word;
 }
 
 a:hover {
@@ -284,12 +437,28 @@ a:hover::after {
   width: 100%;
 }
 
-/* === Home Hero Section with Enhanced Animations === */
+/* === ADDED: Safe area insets for notched phones === */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .fixed-header {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* === Home Hero Section - FIXED for mobile === */
 .home-hero {
   text-align: center;
   padding: var(--spacing-2xl) var(--spacing-md);
   margin: 0 auto;
   max-width: 100%;
+  width: 100%;
   background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
   border-bottom: 1px solid var(--border-color);
   position: relative;
@@ -338,6 +507,7 @@ a:hover::after {
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.5px;
+  word-wrap: break-word;
   animation: gradientShift 5s linear infinite;
 }
 
@@ -352,8 +522,10 @@ a:hover::after {
   color: var(--text-muted);
   line-height: 1.6;
   max-width: 800px;
+  width: 100%;
   margin: 0 auto;
   padding: 0 var(--spacing-md);
+  box-sizing: border-box;
   animation: subtitlePulse 3s ease infinite;
 }
 
@@ -367,7 +539,8 @@ a:hover::after {
   text-align: center;
   padding: var(--spacing-xl) var(--spacing-md);
   margin: 0 auto;
-  max-width: 800px;
+  max-width: 100%;
+  width: 100%;
   position: relative;
   overflow: hidden;
   animation: heroSectionEntrance 0.6s var(--animation-timing);
@@ -392,6 +565,7 @@ a:hover::after {
   background-clip: text;
   color: transparent;
   font-weight: 700;
+  word-wrap: break-word;
   animation: float 3s ease infinite;
 }
 
@@ -405,45 +579,77 @@ a:hover::after {
   color: var(--text-muted);
   line-height: 1.6;
   max-width: 600px;
+  width: 100%;
   margin: 0 auto;
+  padding: 0 var(--spacing-sm);
+  box-sizing: border-box;
 }
 
+/* === Mobile Hero Improvements === */
 @media (max-width: 768px) {
   .home-hero {
-    padding: var(--spacing-xl) var(--spacing-sm);
+    padding: var(--spacing-xl) var(--mobile-spacing-sm);
   }
   
   .home-hero h1 {
-    font-size: clamp(2rem, 4vw, 2.5rem);
-    padding: 0 var(--spacing-sm);
+    font-size: clamp(1.8rem, 6vw, 2.2rem);
+    padding: 0 var(--mobile-spacing-sm);
   }
   
   .home-hero .subtitle {
     font-size: 1rem;
-    padding: 0 var(--spacing-sm);
+    padding: 0 var(--mobile-spacing-sm);
   }
   
   .hero-section {
-    padding: var(--spacing-lg) var(--spacing-sm);
+    padding: var(--spacing-lg) var(--mobile-spacing-sm);
   }
   
   .hero-section h1 {
-    font-size: clamp(1.8rem, 4vw, 2.2rem);
+    font-size: clamp(1.6rem, 5vw, 2rem);
   }
   
   .hero-section .subtitle {
-    font-size: 1rem;
+    font-size: 0.95rem;
+    padding: 0 var(--mobile-spacing-sm);
   }
 }
 
-/* Prevent text overflow */
+@media (max-width: 480px) {
+  .home-hero h1 {
+    font-size: clamp(1.5rem, 7vw, 1.8rem);
+  }
+  
+  .home-hero .subtitle {
+    font-size: 0.9rem;
+  }
+}
+
+/* === Prevent text overflow === */
 .text-overflow-ellipsis {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-/* === Loading Screen with Enhanced Animations === */
+/* ADDED: Text wrapping utilities */
+.text-wrap-balance {
+  text-wrap: balance;
+}
+
+.text-wrap-pretty {
+  text-wrap: pretty;
+}
+
+@media (max-width: 480px) {
+  .text-wrap-balance,
+  .text-wrap-pretty {
+    text-wrap: wrap; /* Fallback for older browsers */
+  }
+}
+
+/* === Loading Screen - FIXED for mobile === */
 .loading-screen {
   position: fixed;
   top: 0;
@@ -465,8 +671,8 @@ a:hover::after {
 }
 
 .loading-spinner {
-  width: 60px;
-  height: 60px;
+  width: clamp(40px, 15vw, 60px);
+  height: clamp(40px, 15vw, 60px);
   border: 4px solid rgba(255, 255, 255, 0.1);
   border-top: 4px solid var(--primary-blue);
   border-right: 4px solid var(--secondary-purple);
@@ -483,8 +689,11 @@ a:hover::after {
 
 .loading-text {
   color: var(--text-muted);
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 4vw, 1.1rem);
   font-weight: 500;
+  text-align: center;
+  padding: 0 var(--spacing-lg);
+  max-width: 90%;
   animation: textGlow 2s ease infinite;
 }
 
@@ -514,227 +723,7 @@ a:hover::after {
   100% { background-position: 200% 0%; }
 }
 
-.loading-particles {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.loading-particle {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: linear-gradient(135deg, var(--primary-blue), var(--secondary-purple));
-  border-radius: 50%;
-  filter: blur(1px);
-}
-
-/* === Error Boundaries with Animations === */
-.error-boundary {
-  padding: var(--spacing-xl);
-  margin: var(--spacing-xl);
-  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-darker) 100%);
-  border: 2px solid var(--secondary-red);
-  border-radius: var(--radius-lg);
-  color: var(--text-light);
-  text-align: center;
-  position: relative;
-  z-index: 100;
-  animation: errorShake 0.5s ease;
-  overflow: hidden;
-}
-
-@keyframes errorShake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-  20%, 40%, 60%, 80% { transform: translateX(5px); }
-}
-
-.error-boundary::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(239,68,68,0.1) 0%, transparent 50%);
-  animation: errorPulse 3s ease infinite;
-  pointer-events: none;
-}
-
-@keyframes errorPulse {
-  0%, 100% { transform: scale(1); opacity: 0.3; }
-  50% { transform: scale(1.2); opacity: 0.6; }
-}
-
-.error-boundary h3 {
-  color: var(--secondary-red);
-  animation: errorGlow 2s ease infinite;
-}
-
-@keyframes errorGlow {
-  0%, 100% { text-shadow: 0 0 10px rgba(239,68,68,0.3); }
-  50% { text-shadow: 0 0 20px rgba(239,68,68,0.6); }
-}
-
-.error-boundary button {
-  padding: var(--spacing-sm) var(--spacing-xl);
-  background: linear-gradient(135deg, var(--primary-blue), var(--secondary-purple));
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-weight: 600;
-  transition: all var(--transition-normal);
-  position: relative;
-  overflow: hidden;
-}
-
-.error-boundary button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(59,130,246,0.3);
-}
-
-.error-boundary button:active {
-  transform: translateY(0);
-}
-
-.component-error {
-  padding: var(--spacing-2xl);
-  text-align: center;
-  background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-darker) 100%);
-  color: var(--text-light);
-  border-radius: var(--radius-lg);
-  margin: var(--spacing-xl);
-  position: relative;
-  z-index: 1;
-  animation: fadeInScale 0.6s var(--animation-timing);
-  overflow: hidden;
-}
-
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.component-error h2 {
-  color: var(--secondary-yellow);
-  margin-bottom: var(--spacing-md);
-  animation: bounce 2s ease infinite;
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-
-.component-error p {
-  color: var(--text-muted);
-  animation: pulse 2s ease infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
-}
-
-/* === Offline Screen with Animations === */
-.offline-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  color: var(--text-light);
-  padding: var(--spacing-xl);
-  text-align: center;
-  z-index: 9998;
-  animation: fadeIn 0.6s var(--animation-timing);
-}
-
-.offline-screen::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(239,68,68,0.1) 0%, transparent 50%);
-  animation: offlinePulse 4s ease infinite;
-  pointer-events: none;
-}
-
-@keyframes offlinePulse {
-  0%, 100% { transform: scale(1); opacity: 0.2; }
-  50% { transform: scale(1.2); opacity: 0.4; }
-}
-
-.offline-screen h2 {
-  color: var(--secondary-red);
-  margin-bottom: var(--spacing-lg);
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  animation: float 3s ease infinite;
-}
-
-.offline-screen p {
-  color: var(--text-muted);
-  margin-bottom: var(--spacing-xl);
-  max-width: 500px;
-  font-size: 1.1rem;
-  padding: 0 var(--spacing-md);
-  animation: pulse 3s ease infinite;
-}
-
-.offline-screen button {
-  padding: var(--spacing-md) var(--spacing-2xl);
-  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-purple) 100%);
-  color: white;
-  border: none;
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: all var(--transition-normal);
-  position: relative;
-  overflow: hidden;
-  animation: buttonPulse 2s ease infinite;
-}
-
-@keyframes buttonPulse {
-  0%, 100% { 
-    box-shadow: 0 4px 15px rgba(59,130,246,0.3);
-    transform: scale(1);
-  }
-  50% { 
-    box-shadow: 0 8px 25px rgba(59,130,246,0.5);
-    transform: scale(1.05);
-  }
-}
-
-.offline-screen button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(59,130,246,0.4);
-}
-
-.offline-screen button:active {
-  transform: translateY(0);
-}
-
-/* === Global Payment Methods Page with Animations === */
+/* === Global Payment Methods Page - FIXED for mobile === */
 .global-payments-page {
   max-width: 1400px;
   margin: 0 auto;
@@ -742,7 +731,9 @@ a:hover::after {
   position: relative;
   z-index: 1;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
+  overflow-x: hidden;
   animation: pageEntrance 0.8s var(--animation-timing);
 }
 
@@ -767,6 +758,7 @@ a:hover::after {
   color: transparent;
   margin-bottom: var(--spacing-sm);
   line-height: 1.1;
+  word-wrap: break-word;
   animation: gradientShift 5s linear infinite;
 }
 
@@ -775,15 +767,18 @@ a:hover::after {
   color: var(--text-muted);
   font-size: clamp(1rem, 2.5vw, 1.25rem);
   max-width: 600px;
+  width: 100%;
   margin: 0 auto var(--spacing-2xl);
   line-height: 1.6;
   padding: 0 var(--spacing-md);
+  box-sizing: border-box;
   animation: fadeInUp 0.8s var(--animation-timing) 0.2s both;
 }
 
-/* === Payment Gateway Styling with Hover Effects === */
+/* === Payment Gateway Styling - FIXED for mobile === */
 .payment-gateway-container {
   max-width: 600px;
+  width: calc(100% - 2rem);
   margin: var(--spacing-2xl) auto;
   padding: var(--spacing-2xl);
   background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-darker) 100%);
@@ -792,10 +787,9 @@ a:hover::after {
   border: 1px solid var(--border-color);
   position: relative;
   z-index: 1;
-  width: calc(100% - 2rem);
   box-sizing: border-box;
-  animation: slideUpFade 0.8s var(--animation-timing);
   overflow: hidden;
+  animation: slideUpFade 0.8s var(--animation-timing);
 }
 
 .payment-gateway-container::before {
@@ -815,6 +809,7 @@ a:hover::after {
   50% { transform: scale(1.1); opacity: 0.5; }
 }
 
+/* === Payment Methods Grid - FIXED for mobile horizontal scroll === */
 .payment-methods-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -822,7 +817,49 @@ a:hover::after {
   margin: var(--spacing-xl) 0;
   position: relative;
   z-index: 1;
+  width: 100%;
   animation: staggerFadeIn 1s var(--animation-timing);
+}
+
+/* ADDED: Horizontal scroll version for mobile */
+@media (max-width: 640px) {
+  .payment-methods-grid {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--mobile-spacing-sm) var(--spacing-lg);
+    margin: var(--spacing-md) calc(-1 * var(--mobile-spacing-sm));
+    width: calc(100% + 2 * var(--mobile-spacing-sm));
+    scrollbar-width: thin;
+  }
+  
+  .payment-method-card {
+    min-width: 280px;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+    margin-right: var(--spacing-sm);
+  }
+  
+  .payment-method-card:last-child {
+    margin-right: var(--mobile-spacing-sm);
+  }
+  
+  /* Add scroll indicator hint */
+  .payment-methods-grid::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 40px;
+    background: linear-gradient(90deg, transparent, var(--bg-dark));
+    pointer-events: none;
+    opacity: 0.7;
+    z-index: 2;
+  }
 }
 
 @keyframes staggerFadeIn {
@@ -891,6 +928,13 @@ a:hover::after {
   z-index: 2;
 }
 
+/* Disable hover effects on mobile */
+@media (max-width: 768px) {
+  .payment-method-card:hover {
+    transform: none;
+  }
+}
+
 .payment-method-card:hover::before {
   opacity: 1;
   animation: rotate 6s linear infinite;
@@ -920,7 +964,7 @@ a:hover::after {
 }
 
 .payment-method-icon {
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
   margin-bottom: var(--spacing-sm);
   flex-shrink: 0;
   animation: bounce 3s ease infinite;
@@ -940,10 +984,11 @@ a:hover::after {
 }
 
 .payment-method-desc {
-  font-size: 0.875rem;
+  font-size: clamp(0.75rem, 2.5vw, 0.875rem);
   color: var(--text-muted);
   margin-bottom: var(--spacing-md);
   flex: 1;
+  word-wrap: break-word;
 }
 
 .payment-method-badge {
@@ -952,7 +997,7 @@ a:hover::after {
   background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1));
   color: var(--primary-blue);
   border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  font-size: clamp(0.7rem, 2vw, 0.75rem);
   font-weight: 600;
   white-space: nowrap;
   flex-shrink: 0;
@@ -964,7 +1009,7 @@ a:hover::after {
   transform: scale(1.05);
 }
 
-/* === Global Regions Styling with Animations === */
+/* === Global Regions Styling - FIXED for mobile === */
 .regions-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -972,7 +1017,28 @@ a:hover::after {
   margin: var(--spacing-xl) 0;
   position: relative;
   z-index: 1;
+  width: 100%;
   animation: fadeInUp 0.8s var(--animation-timing);
+}
+
+/* ADDED: Mobile regions horizontal scroll */
+@media (max-width: 640px) {
+  .regions-container {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--mobile-spacing-sm) var(--spacing-lg);
+    margin: var(--spacing-md) calc(-1 * var(--mobile-spacing-sm));
+    width: calc(100% + 2 * var(--mobile-spacing-sm));
+  }
+  
+  .region-card {
+    min-width: 160px;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
 }
 
 .region-card {
@@ -1027,6 +1093,12 @@ a:hover::after {
   z-index: 2;
 }
 
+@media (max-width: 768px) {
+  .region-card:hover {
+    transform: none;
+  }
+}
+
 .region-card:hover::before {
   opacity: 1;
   animation: rotate 6s linear infinite;
@@ -1045,7 +1117,7 @@ a:hover::after {
 }
 
 .region-flag {
-  font-size: 2.5rem;
+  font-size: clamp(1.8rem, 6vw, 2.5rem);
   margin-bottom: var(--spacing-sm);
   display: inline-block;
   animation: float 4s ease infinite;
@@ -1064,11 +1136,11 @@ a:hover::after {
 }
 
 .region-count {
-  font-size: 0.875rem;
+  font-size: clamp(0.75rem, 2.5vw, 0.875rem);
   color: var(--text-muted);
 }
 
-/* === Global Currencies Styling with Animations === */
+/* === Global Currencies Styling - FIXED for mobile === */
 .currencies-container {
   display: flex;
   flex-wrap: wrap;
@@ -1076,7 +1148,25 @@ a:hover::after {
   margin: var(--spacing-xl) 0;
   position: relative;
   z-index: 1;
+  width: 100%;
   animation: slideUpFade 0.8s var(--animation-timing);
+}
+
+/* ADDED: Allow horizontal scroll on mobile for currency chips */
+@media (max-width: 640px) {
+  .currencies-container {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: var(--spacing-xs) var(--mobile-spacing-sm) var(--spacing-lg);
+    margin: var(--spacing-md) calc(-1 * var(--mobile-spacing-sm));
+    width: calc(100% + 2 * var(--mobile-spacing-sm));
+    scrollbar-width: thin;
+  }
+  
+  .currency-chip {
+    flex-shrink: 0;
+  }
 }
 
 .currency-chip {
@@ -1135,6 +1225,12 @@ a:hover::after {
   z-index: 2;
 }
 
+@media (max-width: 768px) {
+  .currency-chip:hover {
+    transform: none;
+  }
+}
+
 .currency-chip:hover::before {
   opacity: 1;
   animation: rotate 4s linear infinite;
@@ -1158,7 +1254,7 @@ a:hover::after {
   }
 }
 
-/* === Security Badges with Animations === */
+/* === Security Badges - FIXED for mobile === */
 .security-badges {
   display: flex;
   flex-wrap: wrap;
@@ -1167,7 +1263,23 @@ a:hover::after {
   margin: var(--spacing-2xl) 0;
   position: relative;
   z-index: 1;
+  width: 100%;
   animation: fadeInUp 0.8s var(--animation-timing) 0.3s both;
+}
+
+@media (max-width: 640px) {
+  .security-badges {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+    padding: 0 var(--mobile-spacing-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .security-badges {
+    grid-template-columns: 1fr;
+  }
 }
 
 .security-badge {
@@ -1179,7 +1291,7 @@ a:hover::after {
   background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-darker) 100%);
   border-radius: var(--radius-lg);
   min-width: 120px;
-  flex-shrink: 0;
+  flex: 1;
   transition: all var(--transition-normal);
   animation: badgeFloat 3s ease infinite;
   animation-delay: calc(var(--badge-index) * 0.2s);
@@ -1195,6 +1307,12 @@ a:hover::after {
 @keyframes badgeFloat {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-5px); }
+}
+
+@media (max-width: 768px) {
+  .security-badge {
+    animation: none; /* Disable animation on mobile for performance */
+  }
 }
 
 .security-badge::before {
@@ -1216,13 +1334,19 @@ a:hover::after {
   border-color: var(--secondary-green);
 }
 
+@media (max-width: 768px) {
+  .security-badge:hover {
+    transform: none;
+  }
+}
+
 .security-badge:hover::before {
   opacity: 1;
   animation: rotate 6s linear infinite;
 }
 
 .security-badge-icon {
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
   color: var(--secondary-green);
   animation: iconPulse 2s ease infinite;
 }
@@ -1239,12 +1363,13 @@ a:hover::after {
 }
 
 .security-badge-text {
-  font-size: 0.875rem;
+  font-size: clamp(0.75rem, 2.5vw, 0.875rem);
   color: var(--text-muted);
   text-align: center;
+  word-wrap: break-word;
 }
 
-/* === Notification Container === */
+/* === Notification Container - FIXED for mobile === */
 .notification-container {
   position: fixed;
   top: 20px;
@@ -1254,6 +1379,17 @@ a:hover::after {
   flex-direction: column;
   gap: 10px;
   pointer-events: none;
+  max-width: 100%;
+  width: auto;
+}
+
+@media (max-width: 768px) {
+  .notification-container {
+    left: 10px;
+    right: 10px;
+    align-items: stretch;
+    top: 10px;
+  }
 }
 
 .notification {
@@ -1268,6 +1404,15 @@ a:hover::after {
   max-width: 300px;
   position: relative;
   overflow: hidden;
+  word-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+  .notification {
+    max-width: 100%;
+    width: 100%;
+    font-size: 0.9rem;
+  }
 }
 
 @keyframes notificationSlide {
@@ -1314,12 +1459,14 @@ a:hover::after {
   min-height: 300px;
   padding: var(--spacing-xl);
   text-align: center;
+  width: 100%;
+  max-width: 100%;
   animation: fadeIn 0.5s ease;
 }
 
 .suspense-spinner {
-  width: 40px;
-  height: 40px;
+  width: clamp(30px, 10vw, 40px);
+  height: clamp(30px, 10vw, 40px);
   border: 3px solid rgba(59,130,246,0.1);
   border-top-color: var(--primary-blue);
   border-right-color: var(--secondary-purple);
@@ -1328,9 +1475,9 @@ a:hover::after {
   margin-bottom: var(--spacing-md);
 }
 
-/* === Responsive Design === */
+/* === Responsive Design - ENHANCED === */
 
-/* Tablet & Mobile Menu */
+/* Tablet */
 @media (max-width: 1024px) {
   .global-payments-page {
     padding: var(--spacing-lg);
@@ -1345,10 +1492,13 @@ a:hover::after {
   }
 }
 
+/* Small Tablet / Large Mobile */
 @media (max-width: 768px) {
   :root {
     --header-height: var(--mobile-header-height);
     --footer-height: var(--mobile-footer-height);
+    --spacing-xl: 1.5rem;
+    --spacing-2xl: 2rem;
   }
 
   .global-payments-page {
@@ -1356,20 +1506,23 @@ a:hover::after {
   }
 
   .global-payments-page h1 {
-    font-size: 2.25rem;
+    font-size: clamp(1.8rem, 6vw, 2.2rem);
   }
 
   .page-subtitle {
-    font-size: 1.1rem;
+    font-size: 1rem;
     padding: 0 var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
   }
 
+  /* Mobile grid overrides */
   .payment-methods-grid {
     grid-template-columns: repeat(auto-fit, minmax(100%, 1fr));
   }
 
   .regions-container {
     grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
   }
 
   .security-badges {
@@ -1382,7 +1535,7 @@ a:hover::after {
   }
 
   .payment-gateway-container {
-    margin: var(--spacing-md);
+    margin: var(--spacing-md) auto;
     padding: var(--spacing-lg);
     width: calc(100% - 1rem);
   }
@@ -1391,14 +1544,13 @@ a:hover::after {
     padding: var(--spacing-lg);
   }
   
-  .notification-container {
-    left: 20px;
-    right: 20px;
-    align-items: center;
-  }
-  
-  .notification {
-    max-width: 100%;
+  /* Improve touch targets */
+  button, 
+  .btn,
+  .payment-method-card,
+  .region-card,
+  .currency-chip {
+    min-height: 44px;
   }
 }
 
@@ -1429,11 +1581,20 @@ a:hover::after {
   .region-card {
     padding: var(--spacing-md);
   }
+  
+  /* ADDED: Show scroll hint on mobile */
+  .payment-methods-grid,
+  .regions-container,
+  .currencies-container {
+    scrollbar-width: thin;
+  }
 }
 
+/* Small Mobile */
 @media (max-width: 480px) {
   :root {
     font-size: 14px;
+    --mobile-spacing-sm: 0.5rem;
   }
 
   .global-payments-page h1 {
@@ -1445,17 +1606,17 @@ a:hover::after {
   }
 
   .currencies-container {
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .security-badges {
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
   }
 
   .security-badge {
     width: 100%;
-    max-width: 200px;
+    max-width: none;
   }
 
   .offline-screen h2 {
@@ -1472,6 +1633,7 @@ a:hover::after {
   }
 }
 
+/* Extra Small Mobile */
 @media (max-width: 360px) {
   :root {
     font-size: 13px;
@@ -1483,14 +1645,19 @@ a:hover::after {
   
   .payment-method-card {
     padding: var(--spacing-sm);
+    min-width: 240px;
   }
   
   .region-card {
     padding: var(--spacing-sm);
   }
+  
+  .currency-chip {
+    padding: var(--spacing-xs) var(--spacing-md);
+  }
 }
 
-/* === Global Utility Classes with Animations === */
+/* === Global Utility Classes - FIXED for mobile === */
 .container {
   width: 100%;
   max-width: var(--container-max-width);
@@ -1498,6 +1665,13 @@ a:hover::after {
   padding: 0 var(--spacing-md);
   box-sizing: border-box;
   position: relative;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 var(--mobile-spacing-sm);
+  }
 }
 
 .text-center {
@@ -1537,18 +1711,26 @@ a:hover::after {
   transform: translateY(-2px);
 }
 
-/* === Form Elements with Animations === */
+@media (max-width: 768px) {
+  .shadow-card-hover:hover {
+    transform: none;
+  }
+}
+
+/* === Form Elements - FIXED for mobile === */
 input, select, textarea {
   background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-darker) 100%);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   color: var(--text-light);
   padding: var(--spacing-sm) var(--spacing-md);
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 4vw, 1rem);
   transition: all var(--transition-fast);
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  -webkit-appearance: none; /* Removes iOS styling */
+  appearance: none;
 }
 
 input:focus, select:focus, textarea:focus {
@@ -1558,7 +1740,14 @@ input:focus, select:focus, textarea:focus {
   transform: translateY(-1px);
 }
 
-/* === Buttons with Enhanced Animations === */
+/* Fix iOS zoom on input focus */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* === Buttons - FIXED for mobile === */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1570,13 +1759,29 @@ input:focus, select:focus, textarea:focus {
   border: none;
   border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 4vw, 1rem);
   cursor: pointer;
   transition: all var(--transition-normal);
   position: relative;
   z-index: 1;
   overflow: hidden;
   animation: buttonGlow 2s ease infinite;
+  min-height: 44px;
+  min-width: 44px;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .btn {
+    white-space: normal;
+    word-wrap: break-word;
+    padding: var(--spacing-sm) var(--spacing-md);
+    width: 100%;
+  }
+  
+  .btn-block-mobile {
+    width: 100%;
+  }
 }
 
 @keyframes buttonGlow {
@@ -1606,6 +1811,12 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 10px 30px rgba(59,130,246,0.4);
 }
 
+@media (max-width: 768px) {
+  .btn:hover {
+    transform: none;
+  }
+}
+
 .btn:hover::before {
   opacity: 1;
   animation: rotate 4s linear infinite;
@@ -1617,7 +1828,7 @@ input:focus, select:focus, textarea:focus {
 
 .btn-lg {
   padding: var(--spacing-md) var(--spacing-2xl);
-  font-size: 1.1rem;
+  font-size: clamp(1rem, 4.5vw, 1.1rem);
 }
 
 .btn-block {
@@ -1632,16 +1843,16 @@ input:focus, select:focus, textarea:focus {
   background: linear-gradient(135deg, var(--secondary-red) 0%, #dc2626 100%);
 }
 
-/* === Cart Specific === */
+/* === Cart Specific - FIXED for mobile === */
 .cart-count {
   position: absolute;
   top: -8px;
   right: -8px;
   background: linear-gradient(135deg, var(--secondary-red) 0%, #dc2626 100%);
   color: white;
-  font-size: 0.7rem;
+  font-size: clamp(0.6rem, 2.5vw, 0.7rem);
   font-weight: 600;
-  width: 18px;
+  min-width: 18px;
   height: 18px;
   border-radius: 50%;
   display: flex;
@@ -1656,7 +1867,7 @@ input:focus, select:focus, textarea:focus {
   50% { transform: scale(1.1); }
 }
 
-/* === Animation Classes === */
+/* === Animation Classes - DISABLE on mobile for performance === */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1670,6 +1881,17 @@ input:focus, select:focus, textarea:focus {
 
 .fade-in {
   animation: fadeIn 0.5s ease-out forwards;
+}
+
+@media (max-width: 768px) {
+  .fade-in,
+  .slide-in-right,
+  .slide-in-left,
+  .scale-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes slideInRight {
@@ -1717,7 +1939,7 @@ input:focus, select:focus, textarea:focus {
   animation: scaleIn 0.5s ease-out forwards;
 }
 
-/* === Overlap Prevention Classes === */
+/* === Overlap Prevention Classes - ENHANCED === */
 .no-overlap {
   position: relative;
   z-index: 1;
@@ -1726,10 +1948,12 @@ input:focus, select:focus, textarea:focus {
 .overlap-fix {
   clear: both;
   overflow: auto;
+  width: 100%;
 }
 
 .prevent-overflow {
   overflow: hidden;
+  max-width: 100%;
 }
 
 .clearfix::after {
@@ -1741,16 +1965,47 @@ input:focus, select:focus, textarea:focus {
 /* Fix for flex items overlapping */
 .flex-no-overlap {
   min-width: 0;
+  width: 100%;
 }
 
-/* Grid layout helper */
+/* Grid layout helper - FIXED for mobile */
 .grid-no-overlap {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: var(--spacing-md);
+  width: 100%;
+  max-width: 100%;
 }
 
-/* === Accessibility === */
+@media (max-width: 640px) {
+  .grid-no-overlap {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ADDED: Mobile swipe indicators */
+.mobile-swipe-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 20px;
+}
+
+.mobile-swipe-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-color);
+  transition: all 0.3s;
+}
+
+.mobile-swipe-dot.active {
+  width: 24px;
+  background: linear-gradient(90deg, var(--primary-blue), var(--secondary-purple));
+  border-radius: 12px;
+}
+
+/* === Accessibility - ENHANCED for mobile === */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1767,12 +2022,25 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* Focus styles for accessibility */
+/* Focus styles for accessibility - ENHANCED for touch */
 :focus-visible {
   outline: 2px solid var(--primary-blue);
   outline-offset: 2px;
   position: relative;
   z-index: 10;
+}
+
+/* Remove focus outline for touch devices */
+@media (hover: none) and (pointer: coarse) {
+  :focus-visible {
+    outline: none;
+  }
+  
+  .btn:active,
+  .payment-method-card:active,
+  .region-card:active {
+    opacity: 0.8;
+  }
 }
 
 /* Skip to main content link for accessibility */
@@ -1851,7 +2119,7 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* === Print Styles === */
+/* === Print Styles - UNCHANGED === */
 @media print {
   .global-payments-page {
     padding: 0;
@@ -1886,16 +2154,18 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* === Additional Gap Fixes for Home Page === */
+/* === Additional Gap Fixes for Home Page - ENHANCED === */
 body.home-page {
   padding-top: 0 !important;
   margin-top: 0 !important;
+  overflow-x: hidden;
 }
 
 #root.home-page,
 .App.home-page {
   margin-top: 0 !important;
   padding-top: 0 !important;
+  overflow-x: hidden;
 }
 
 /* Ensure header doesn't push content down on home page */
@@ -1912,6 +2182,9 @@ body.home-page {
 .home-page {
   margin-top: 0 !important;
   padding-top: 0 !important;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .home-page > *:first-child {
@@ -1922,4 +2195,68 @@ body.home-page {
 /* Override any conflicting styles */
 .layout:has(.home-page) .main-content {
   padding-top: 0 !important;
+}
+
+/* === ADDED: Fix for specific components that might overflow === */
+
+/* Fix for product grids */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+  width: 100%;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .product-grid {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) 0 var(--spacing-lg);
+  }
+  
+  .product-grid > * {
+    min-width: 260px;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+}
+
+/* Fix for market data tables */
+.market-data-table {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: var(--spacing-md) 0;
+}
+
+.market-data-table table {
+  min-width: 600px; /* Ensures table doesn't squish */
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .market-data-table {
+    margin: var(--spacing-sm) calc(-1 * var(--mobile-spacing-sm));
+    width: calc(100% + 2 * var(--mobile-spacing-sm));
+    padding: 0 var(--mobile-spacing-sm);
+  }
+}
+
+/* Fix for hero section backgrounds */
+.hero-background {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Fix for footer */
+footer {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }

@@ -5,29 +5,52 @@
     <!-- Add base href to ensure all relative URLs resolve from the root -->
     <base href="/" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <!-- Updated viewport meta tag for better mobile control -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <!-- UPDATED: Better viewport meta tag for mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="UniDigital Marketplace - AI-Powered Pricing Platform" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>UniDigital | AI-Priced Classic Cars</title>
-    <!-- Remove ALL CDN links - they cause errors -->
+    <!-- ADDED: Prevent text scaling issues on mobile -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
     <style>
-      /* Critical CSS to prevent white screen */
-      body {
+      /* Critical CSS to prevent white screen and improve mobile */
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent; /* Removes tap highlight on mobile */
+      }
+      
+      html, body {
         margin: 0;
+        padding: 0;
+        overflow-x: hidden; /* Prevents horizontal scroll on body */
+        width: 100%;
+        max-width: 100%;
         background-color: #0f172a;
         color: #f8fafc;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         min-height: 100vh;
+        /* ADDED: Smooth scrolling */
+        scroll-behavior: smooth;
+      }
+      
+      body {
+        position: relative;
+        overflow-x: hidden;
       }
       
       #root {
         min-height: 100vh;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden; /* Prevents child elements from causing horizontal scroll */
       }
       
-      /* Loading screen */
+      /* Loading screen - IMPROVED for mobile */
       #loading {
         position: fixed;
         top: 0;
@@ -40,11 +63,13 @@
         align-items: center;
         z-index: 9999;
         flex-direction: column;
+        padding: 20px; /* ADDED: padding for small screens */
+        text-align: center;
       }
       
       .loading-spinner {
-        width: 50px;
-        height: 50px;
+        width: min(50px, 15vw); /* ADDED: responsive sizing */
+        height: min(50px, 15vw);
         border: 3px solid #334155;
         border-top: 3px solid #3b82f6;
         border-radius: 50%;
@@ -54,12 +79,24 @@
       
       .loading-text {
         color: #94a3b8;
-        font-size: 1.2rem;
+        font-size: clamp(1rem, 4vw, 1.2rem); /* ADDED: responsive font */
+        max-width: 90%;
+        word-wrap: break-word;
       }
       
       @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
+      }
+
+      /* ADDED: Safe area insets for notched phones (iPhone X and newer) */
+      @supports (padding: max(0px)) {
+        body {
+          padding-left: min(0vmin, env(safe-area-inset-left));
+          padding-right: min(0vmin, env(safe-area-inset-right));
+          padding-top: min(0vmin, env(safe-area-inset-top));
+          padding-bottom: min(0vmin, env(safe-area-inset-bottom));
+        }
       }
     </style>
   </head>
@@ -74,15 +111,33 @@
     <div id="root"></div>
     
     <script>
-      // Hide loading screen when React loads
-      window.addEventListener('DOMContentLoaded', function() {
+      // IMPROVED: Better loading screen hide with smooth fade
+      window.addEventListener('load', function() {
+        // Small delay to ensure React has rendered
         setTimeout(function() {
           var loading = document.getElementById('loading');
           if (loading) {
-            loading.style.display = 'none';
+            // Add fade out animation
+            loading.style.transition = 'opacity 0.3s ease';
+            loading.style.opacity = '0';
+            
+            // Remove from DOM after fade
+            setTimeout(function() {
+              if (loading && loading.parentNode) {
+                loading.style.display = 'none';
+              }
+            }, 300);
           }
-        }, 1000);
+        }, 500);
       });
+
+      // ADDED: Prevent zoom on double-tap for better UX (optional)
+      document.addEventListener('touchstart', function(e) {
+        if (e.touches.length > 1) {
+          e.preventDefault(); // Prevent pinch zoom if you want strict control
+        }
+      }, { passive: false });
     </script>
+  </head>
   </body>
 </html>
